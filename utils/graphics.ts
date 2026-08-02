@@ -24,7 +24,6 @@ if (typeof window !== 'undefined') {
 
 // Generates a Canvas element from a pixel string array
 export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: string): HTMLCanvasElement => {
-    // Determine palette based on key naming convention OR explicit paletteKey
     let palette: Record<string, string> = PALETTES.PLAYER;
     
     if (paletteKey && (PALETTES as any)[paletteKey]) {
@@ -111,21 +110,13 @@ export const generateAllSprites = (): Record<string, HTMLCanvasElement> => {
         cache[key] = generateSpriteCanvas(key, data);
     });
 
-    // 2. Generate Player Variants with Custom Silhouettes per Ship Archetype
+    // 2. Generate Player Variants for each Palette
     const playerBaseKeys = ['PLAYER', 'PLAYER_LEFT', 'PLAYER_RIGHT', 'PLAYER_LEFT_HARD', 'PLAYER_RIGHT_HARD'];
-    const shipCustomMap: Record<string, string[]> = {
-        'PLAYER_MATTEWS': SPRITES['PLAYER_MATTEWS_BASE'],
-        'PLAYER_TOPHE': SPRITES['PLAYER_TOPHE_BASE'],
-        'PLAYER_BOLTON': SPRITES['PLAYER_BOLTON_BASE'],
-        'PLAYER_JEFF': SPRITES['PLAYER_JEFF_BASE'],
-        'PLAYER_MICKA': SPRITES['PLAYER_MICKA_BASE'],
-        'PLAYER_BALI': SPRITES['PLAYER_BALI_BASE']
-    };
+    const shipPalettes = ['PLAYER_MATTEWS', 'PLAYER_TOPHE', 'PLAYER_BOLTON', 'PLAYER_JEFF', 'PLAYER_MICKA', 'PLAYER_BALI'];
 
-    Object.keys(shipCustomMap).forEach(paletteKey => {
-        const customData = shipCustomMap[paletteKey];
+    shipPalettes.forEach(paletteKey => {
         playerBaseKeys.forEach(baseKey => {
-            const data = customData || SPRITES[baseKey];
+            const data = SPRITES[baseKey];
             if (data) {
                 const suffix = baseKey.replace('PLAYER', ''); 
                 const newKey = `${paletteKey}${suffix}`; 
