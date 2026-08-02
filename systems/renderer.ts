@@ -455,7 +455,7 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
     }
 
     const hdEnemy = HD_ENEMIES[alien.type.toString()];
-    if (hdEnemy) {
+    if (hdEnemy && hdEnemy.complete && hdEnemy.naturalWidth > 0) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(hdEnemy, alien.pos.x, alien.pos.y, alien.width, alien.height);
