@@ -69,6 +69,20 @@ export class ParticleSystem {
         });
     }
 
+    public spawnFloatingText(pos: Position, text: string, color: string = '#22d3ee'): void {
+        this.particles.push({
+            id: Math.random().toString(),
+            pos: { x: pos.x, y: pos.y },
+            velocity: { x: 0, y: -1.2 },
+            life: 1.0,
+            color,
+            size: 12,
+            type: 'TEXT',
+            text,
+            decay: 0.02
+        });
+    }
+
     public clear(): void {
         this.particles = [];
     }

@@ -495,6 +495,13 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Particle[]) =
             ctx.shadowBlur = 10;
             ctx.shadowColor = p.color;
             ctx.fillRect(p.pos.x, p.pos.y, p.size, p.size);
+        } else if (p.type === 'TEXT' && p.text) {
+            ctx.font = 'bold 12px monospace';
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = p.color;
+            ctx.fillStyle = p.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(p.text, p.pos.x, p.pos.y);
         } else {
             ctx.fillRect(p.pos.x, p.pos.y, p.size, p.size);
         }
