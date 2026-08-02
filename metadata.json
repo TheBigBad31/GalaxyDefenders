@@ -1,0 +1,5 @@
+{
+  "name": "Shoot'm up",
+  "description": "A classic arcade shooter implementation using HTML5 Canvas and React. Features smooth gameplay, particle effects, and AI-generated alien taunts.",
+  "requestFramePermissions": []
+}
