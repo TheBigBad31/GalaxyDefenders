@@ -17,6 +17,7 @@ import {
     COLORS, 
     PALETTES
 } from '../constants';
+import { HD_SHIPS } from '../utils/graphics';
 
 // --- HELPERS ---
 
@@ -340,19 +341,32 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, player: Player, gameTime: n
     ctx.shadowBlur = 18;
     ctx.shadowColor = player.color;
     
-    let spriteKey = 'PLAYER';
-    if (player.lean < -1.5) spriteKey = 'PLAYER_LEFT_HARD';
-    else if (player.lean < -0.5) spriteKey = 'PLAYER_LEFT';
-    else if (player.lean > 1.5) spriteKey = 'PLAYER_RIGHT_HARD';
-    else if (player.lean > 0.5) spriteKey = 'PLAYER_RIGHT';
-
-    const palettePrefix = `PLAYER_${player.shipId}`;
-    if (cache[`${palettePrefix}_${spriteKey.replace('PLAYER_', '')}`] || cache[`${palettePrefix}`]) {
-        spriteKey = spriteKey.replace('PLAYER', palettePrefix);
-    }
-
     ctx.translate(cx, cy);
-    drawCachedSprite(ctx, cache, spriteKey, -player.width / 2, -player.height / 2, player.width, player.height);
+
+    // Lean rotation angle for smooth steering animation (-15 deg to +15 deg)
+    const leanAngle = (player.lean / 2) * (Math.PI / 12);
+    ctx.rotate(leanAngle);
+
+    const hdImg = HD_SHIPS[player.shipId];
+    if (hdImg && hdImg.complete && hdImg.naturalWidth > 0) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(hdImg, -player.width / 2, -player.height / 2, player.width, player.height);
+    } else {
+        let spriteKey = 'PLAYER';
+        if (player.lean < -1.5) spriteKey = 'PLAYER_LEFT_HARD';
+        else if (player.lean < -0.5) spriteKey = 'PLAYER_LEFT';
+        else if (player.lean > 1.5) spriteKey = 'PLAYER_RIGHT_HARD';
+        else if (player.lean > 0.5) spriteKey = 'PLAYER_RIGHT';
+
+        const palettePrefix = `PLAYER_${player.shipId}`;
+        if (cache[`${palettePrefix}_${spriteKey.replace('PLAYER_', '')}`] || cache[`${palettePrefix}`]) {
+            spriteKey = spriteKey.replace('PLAYER', palettePrefix);
+        }
+
+        drawCachedSprite(ctx, cache, spriteKey, -player.width / 2, -player.height / 2, player.width, player.height);
+    }
+    
     ctx.restore();
 };
 

@@ -1,7 +1,26 @@
-
-
 import { PALETTES } from '../constants/palettes';
 import { SPRITES } from '../constants/sprites';
+
+// HD Ship Images Cache
+export const HD_SHIPS: Record<string, HTMLImageElement> = {};
+
+const shipPaths: Record<string, string> = {
+    'MATTEWS': '/assets/ships/ship_mattews.png',
+    'TOPHE': '/assets/ships/ship_tophe.png',
+    'BOLTON': '/assets/ships/ship_bolton.png',
+    'JEFF': '/assets/ships/ship_jeff.png',
+    'MICKA': '/assets/ships/ship_micka.png',
+    'BALI': '/assets/ships/ship_bali.png',
+};
+
+// Preload HD ship PNG assets
+if (typeof window !== 'undefined') {
+    Object.entries(shipPaths).forEach(([shipId, path]) => {
+        const img = new Image();
+        img.src = path;
+        HD_SHIPS[shipId] = img;
+    });
+}
 
 // Generates a Canvas element from a pixel string array
 export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: string): HTMLCanvasElement => {
@@ -11,7 +30,7 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
     if (paletteKey && (PALETTES as any)[paletteKey]) {
         palette = (PALETTES as any)[paletteKey];
     } else {
-        if (key.startsWith('PLAYER')) palette = PALETTES.PLAYER; // Fallback
+        if (key.startsWith('PLAYER')) palette = PALETTES.PLAYER; 
         else if (key.startsWith('SCOUT')) palette = PALETTES.SCOUT;
         else if (key.startsWith('FIGHTER')) palette = PALETTES.FIGHTER;
         else if (key.startsWith('ASSAULT')) palette = key.includes('DAMAGED') ? PALETTES.ASSAULT_DAMAGED : PALETTES.ASSAULT;
@@ -40,7 +59,6 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
         else if (key.startsWith('BULLET')) palette = PALETTES.ENEMY_PROJECTILES;
     }
 
-    // Safety fallback for missing data or invalid structure
     if (!data || !Array.isArray(data) || data.length === 0 || !data[0]) {
         const errCanvas = document.createElement('canvas');
         errCanvas.width = 32; errCanvas.height = 32;
@@ -52,7 +70,6 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
         return errCanvas;
     }
 
-    // High Res Scale for crispy HD look on canvas
     const scale = 4; 
     const height = data.length;
     const width = data[0].length;
@@ -72,7 +89,6 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
                 ctx.fillStyle = color;
                 ctx.fillRect(x * scale, y * scale, scale, scale);
 
-                // Subtle inner glow / specular highlight on top-left pixel edges
                 if (char === '9' || char === '1' || char === '5' || char === 'A' || char === '3') {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
                     ctx.fillRect(x * scale, y * scale, scale, 1);
@@ -88,7 +104,7 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
 // Synchronously generate all sprites into a cache
 export const generateAllSprites = (): Record<string, HTMLCanvasElement> => {
     const cache: Record<string, HTMLCanvasElement> = {};
-    console.log(`[GRAPHICS] Generating HD sprites...`);
+    console.log(`[GRAPHICS] Generating HD sprites & preloading HD ships...`);
     
     // 1. Standard Sprites
     Object.entries(SPRITES).forEach(([key, data]) => {
@@ -102,18 +118,17 @@ export const generateAllSprites = (): Record<string, HTMLCanvasElement> => {
         'PLAYER_TOPHE': SPRITES['PLAYER_TOPHE_BASE'],
         'PLAYER_BOLTON': SPRITES['PLAYER_BOLTON_BASE'],
         'PLAYER_JEFF': SPRITES['PLAYER_JEFF_BASE'],
-        'PLAYER_MICKA': SPRITES['PLAYER_MIDKA_BASE'] || SPRITES['PLAYER_MICKA_BASE'],
+        'PLAYER_MICKA': SPRITES['PLAYER_MICKA_BASE'],
         'PLAYER_BALI': SPRITES['PLAYER_BALI_BASE']
     };
 
     Object.keys(shipCustomMap).forEach(paletteKey => {
         const customData = shipCustomMap[paletteKey];
         playerBaseKeys.forEach(baseKey => {
-            // Use custom ship sprite if available, fallback to default baseKey sprite
             const data = customData || SPRITES[baseKey];
             if (data) {
                 const suffix = baseKey.replace('PLAYER', ''); 
-                const newKey = `${paletteKey}${suffix}`; // e.g. PLAYER_MATTEWS_LEFT
+                const newKey = `${paletteKey}${suffix}`; 
                 cache[newKey] = generateSpriteCanvas(baseKey, data, paletteKey);
             }
         });
