@@ -52,8 +52,8 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
         return errCanvas;
     }
 
-    // High Res Scale for crispy look on canvas
-    const scale = 2; 
+    // High Res Scale for crispy HD look on canvas
+    const scale = 4; 
     const height = data.length;
     const width = data[0].length;
     
@@ -71,6 +71,13 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
                 const color = palette[char] || '#ff00ff';
                 ctx.fillStyle = color;
                 ctx.fillRect(x * scale, y * scale, scale, scale);
+
+                // Subtle inner glow / specular highlight on top-left pixel edges
+                if (char === '9' || char === '1' || char === '5' || char === 'A' || char === '3') {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                    ctx.fillRect(x * scale, y * scale, scale, 1);
+                    ctx.fillRect(x * scale, y * scale, 1, scale);
+                }
             }
         }
     }
@@ -81,31 +88,37 @@ export const generateSpriteCanvas = (key: string, data: string[], paletteKey?: s
 // Synchronously generate all sprites into a cache
 export const generateAllSprites = (): Record<string, HTMLCanvasElement> => {
     const cache: Record<string, HTMLCanvasElement> = {};
-    console.log(`[GRAPHICS] Generating sprites...`);
+    console.log(`[GRAPHICS] Generating HD sprites...`);
     
     // 1. Standard Sprites
     Object.entries(SPRITES).forEach(([key, data]) => {
         cache[key] = generateSpriteCanvas(key, data);
     });
 
-    // 2. Generate Player Variants for each Palette
-    // Include HARD variants explicitly so they get colored
+    // 2. Generate Player Variants with Custom Silhouettes per Ship Archetype
     const playerBaseKeys = ['PLAYER', 'PLAYER_LEFT', 'PLAYER_RIGHT', 'PLAYER_LEFT_HARD', 'PLAYER_RIGHT_HARD'];
-    const shipPalettes = ['PLAYER_MATTEWS', 'PLAYER_TOPHE', 'PLAYER_BOLTON', 'PLAYER_JEFF', 'PLAYER_MICKA', 'PLAYER_BALI'];
+    const shipCustomMap: Record<string, string[]> = {
+        'PLAYER_MATTEWS': SPRITES['PLAYER_MATTEWS_BASE'],
+        'PLAYER_TOPHE': SPRITES['PLAYER_TOPHE_BASE'],
+        'PLAYER_BOLTON': SPRITES['PLAYER_BOLTON_BASE'],
+        'PLAYER_JEFF': SPRITES['PLAYER_JEFF_BASE'],
+        'PLAYER_MICKA': SPRITES['PLAYER_MIDKA_BASE'] || SPRITES['PLAYER_MICKA_BASE'],
+        'PLAYER_BALI': SPRITES['PLAYER_BALI_BASE']
+    };
 
-    shipPalettes.forEach(paletteKey => {
+    Object.keys(shipCustomMap).forEach(paletteKey => {
+        const customData = shipCustomMap[paletteKey];
         playerBaseKeys.forEach(baseKey => {
-            const data = SPRITES[baseKey];
+            // Use custom ship sprite if available, fallback to default baseKey sprite
+            const data = customData || SPRITES[baseKey];
             if (data) {
-                // Construct new key: e.g., PLAYER_MATTEWS_LEFT
-                // Remove 'PLAYER' from baseKey to get suffix: '', '_LEFT', '_RIGHT'
                 const suffix = baseKey.replace('PLAYER', ''); 
-                const newKey = `${paletteKey}${suffix}`; // PLAYER_MATTEWS_LEFT
+                const newKey = `${paletteKey}${suffix}`; // e.g. PLAYER_MATTEWS_LEFT
                 cache[newKey] = generateSpriteCanvas(baseKey, data, paletteKey);
             }
         });
     });
     
-    console.log(`[GRAPHICS] Generation complete. Keys: ${Object.keys(cache).length}`);
+    console.log(`[GRAPHICS] Generation complete. Cached Sprites: ${Object.keys(cache).length}`);
     return cache;
 };
