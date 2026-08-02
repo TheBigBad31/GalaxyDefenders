@@ -3,6 +3,7 @@ import { SPRITES } from '../constants/sprites';
 
 // HD Ship Images Cache
 export const HD_SHIPS: Record<string, HTMLImageElement> = {};
+export const HD_ENEMIES: Record<string, HTMLCanvasElement> = {};
 
 const shipPaths: Record<string, string> = {
     'MATTEWS': '/assets/ships/ship_mattews.png',
@@ -19,6 +20,192 @@ if (typeof window !== 'undefined') {
         const img = new Image();
         img.src = path;
         HD_SHIPS[shipId] = img;
+    });
+}
+
+// Procedural HD Generator for Cyber-Military Enemy Fleet (Style Guide Compliant)
+export const createHDEnemyCanvas = (type: string): HTMLCanvasElement => {
+    const canvas = document.createElement('canvas');
+    const size = type === 'BOSS' || type === 'MOTHERSHIP' ? 256 : 128;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+
+    const cx = size / 2;
+    const cy = size / 2;
+
+    ctx.save();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#ef4444';
+
+    // Carbon Metal Gradient
+    const bodyGrad = ctx.createLinearGradient(0, 0, 0, size);
+    bodyGrad.addColorStop(0, '#334155');
+    bodyGrad.addColorStop(0.3, '#1e293b');
+    bodyGrad.addColorStop(0.8, '#0f172a');
+    bodyGrad.addColorStop(1, '#020617');
+
+    switch (type) {
+        case 'SCOUT': {
+            // Fast V-shaped Cyber-Interceptor pointing DOWN
+            ctx.beginPath();
+            ctx.moveTo(cx, size * 0.85); // Nose facing down
+            ctx.lineTo(cx + size * 0.35, size * 0.25);
+            ctx.lineTo(cx + size * 0.15, size * 0.15);
+            ctx.lineTo(cx, size * 0.22);
+            ctx.lineTo(cx - size * 0.15, size * 0.15);
+            ctx.lineTo(cx - size * 0.35, size * 0.25);
+            ctx.closePath();
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b'; // Gold trim
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Crimson Laser Eye Bar
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#ff0044';
+            ctx.fillRect(cx - 12, size * 0.6, 24, 5);
+            break;
+        }
+        case 'FIGHTER': {
+            // Symmetrical Arrowhead Dreadnought Fighter
+            ctx.beginPath();
+            ctx.moveTo(cx, size * 0.88);
+            ctx.lineTo(cx + size * 0.38, size * 0.38);
+            ctx.lineTo(cx + size * 0.25, size * 0.12);
+            ctx.lineTo(cx - size * 0.25, size * 0.12);
+            ctx.lineTo(cx - size * 0.38, size * 0.38);
+            ctx.closePath();
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Dual Sensor Bar
+            ctx.fillStyle = '#ff0044';
+            ctx.shadowBlur = 15;
+            ctx.fillRect(cx - 16, size * 0.55, 32, 6);
+            break;
+        }
+        case 'ASSAULT': {
+            // Heavy Hexagonal Armored Ship
+            ctx.beginPath();
+            ctx.moveTo(cx, size * 0.9);
+            ctx.lineTo(cx + size * 0.42, size * 0.6);
+            ctx.lineTo(cx + size * 0.35, size * 0.12);
+            ctx.lineTo(cx - size * 0.35, size * 0.12);
+            ctx.lineTo(cx - size * 0.42, size * 0.6);
+            ctx.closePath();
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+
+            // Triple Crimson Sensor Array
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowBlur = 15;
+            ctx.fillRect(cx - 20, size * 0.5, 40, 8);
+            break;
+        }
+        case 'REFLECTOR': {
+            // Circular Mirror Shield Cruiser
+            ctx.beginPath();
+            ctx.arc(cx, cy, size * 0.38, 0, Math.PI * 2);
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#38bdf8'; // Shield Cyan Rim
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 20;
+            ctx.stroke();
+
+            // Central Red Core
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        }
+        case 'SNIPER': {
+            // Needle-Nose Sniper Ship with Long Focal Eye
+            ctx.beginPath();
+            ctx.moveTo(cx, size * 0.92);
+            ctx.lineTo(cx + size * 0.18, size * 0.25);
+            ctx.lineTo(cx + size * 0.32, size * 0.12);
+            ctx.lineTo(cx - size * 0.32, size * 0.12);
+            ctx.lineTo(cx - size * 0.18, size * 0.25);
+            ctx.closePath();
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // Long Focal Crimson Lens
+            ctx.fillStyle = '#ff0044';
+            ctx.shadowBlur = 20;
+            ctx.fillRect(cx - 4, size * 0.4, 8, 35);
+            break;
+        }
+        case 'BOSS':
+        case 'MOTHERSHIP': {
+            // Massive Super-Dreadnought Flagship
+            ctx.beginPath();
+            ctx.moveTo(cx, size * 0.92);
+            ctx.lineTo(cx + size * 0.45, size * 0.55);
+            ctx.lineTo(cx + size * 0.38, size * 0.1);
+            ctx.lineTo(cx - size * 0.38, size * 0.1);
+            ctx.lineTo(cx - size * 0.45, size * 0.55);
+            ctx.closePath();
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            // Glowing Crimson Core Array
+            ctx.fillStyle = '#ff0044';
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = '#ff0044';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(cx - 35, size * 0.7, 70, 8);
+            break;
+        }
+        default: {
+            // Generic Cyber-Military Frigate
+            ctx.beginPath();
+            ctx.moveTo(cx, size * 0.85);
+            ctx.lineTo(cx + size * 0.35, size * 0.2);
+            ctx.lineTo(cx - size * 0.35, size * 0.2);
+            ctx.closePath();
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(cx - 12, size * 0.5, 24, 6);
+            break;
+        }
+    }
+
+    ctx.restore();
+    return canvas;
+};
+
+// Pre-generate HD Cyber-Military enemy textures
+if (typeof window !== 'undefined') {
+    const enemyTypes = ['SCOUT', 'FIGHTER', 'ASSAULT', 'REFLECTOR', 'GUNNER', 'SNIPER', 'ARTILLERY', 'UFO', 'ELITE', 'KAMIKAZE', 'JELLYFISH', 'BOSS', 'MOTHERSHIP'];
+    enemyTypes.forEach(t => {
+        HD_ENEMIES[t] = createHDEnemyCanvas(t);
     });
 }
 

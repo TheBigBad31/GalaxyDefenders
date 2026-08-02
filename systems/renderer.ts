@@ -17,7 +17,7 @@ import {
     COLORS, 
     PALETTES
 } from '../constants';
-import { HD_SHIPS } from '../utils/graphics';
+import { HD_SHIPS, HD_ENEMIES } from '../utils/graphics';
 
 // --- HELPERS ---
 
@@ -454,7 +454,14 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
         ctx.restore();
     }
 
-    drawCachedSprite(ctx, cache, spriteKey, alien.pos.x, alien.pos.y, alien.width, alien.height);
+    const hdEnemy = HD_ENEMIES[alien.type.toString()];
+    if (hdEnemy) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(hdEnemy, alien.pos.x, alien.pos.y, alien.width, alien.height);
+    } else {
+        drawCachedSprite(ctx, cache, spriteKey, alien.pos.x, alien.pos.y, alien.width, alien.height);
+    }
     ctx.restore();
 };
 
