@@ -17,7 +17,7 @@ import {
     COLORS, 
     PALETTES
 } from '../constants';
-import { HD_SHIPS, HD_ENEMIES } from '../utils/graphics';
+import { HD_SHIPS, HD_ENEMIES, getTransparentImageCanvas } from '../utils/graphics';
 
 // --- HELPERS ---
 
@@ -456,9 +456,10 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
 
     const hdEnemy = HD_ENEMIES[alien.type.toString()];
     if (hdEnemy && hdEnemy.complete && hdEnemy.naturalWidth > 0) {
+        const transparentCanvas = getTransparentImageCanvas(alien.type.toString(), hdEnemy);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(hdEnemy, alien.pos.x, alien.pos.y, alien.width, alien.height);
+        ctx.drawImage(transparentCanvas || hdEnemy, alien.pos.x, alien.pos.y, alien.width, alien.height);
     } else {
         drawCachedSprite(ctx, cache, spriteKey, alien.pos.x, alien.pos.y, alien.width, alien.height);
     }

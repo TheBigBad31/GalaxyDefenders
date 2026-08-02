@@ -4,6 +4,37 @@ import { SPRITES } from '../constants/sprites';
 // HD Ship & Enemy Images Cache
 export const HD_SHIPS: Record<string, HTMLImageElement> = {};
 export const HD_ENEMIES: Record<string, HTMLImageElement> = {};
+export const TRANSPARENT_CACHE: Record<string, HTMLCanvasElement> = {};
+
+// Transparent Background Filter Cache (removes white/light background from imported sprite assets)
+export const getTransparentImageCanvas = (key: string, img: HTMLImageElement): HTMLCanvasElement | null => {
+    if (TRANSPARENT_CACHE[key]) return TRANSPARENT_CACHE[key];
+    if (!img.complete || img.naturalWidth === 0) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(img, 0, 0);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+
+    // Filter white & light background pixels (R > 220, G > 220, B > 220) to 100% transparent alpha
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r > 220 && g > 220 && b > 220) {
+            data[i + 3] = 0; // Alpha = 0
+        }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    TRANSPARENT_CACHE[key] = canvas;
+    return canvas;
+};
 
 const shipPaths: Record<string, string> = {
     'MATTEWS': '/assets/ships/ship_mattews.png',
@@ -55,7 +86,6 @@ export const createHDEnemyCanvasFallback = (type: string): HTMLCanvasElement => 
     if (!ctx) return canvas;
 
     const cx = size / 2;
-    const cy = size / 2;
 
     ctx.save();
     ctx.shadowBlur = 15;
@@ -67,43 +97,18 @@ export const createHDEnemyCanvasFallback = (type: string): HTMLCanvasElement => 
     bodyGrad.addColorStop(0.8, '#0f172a');
     bodyGrad.addColorStop(1, '#020617');
 
-    switch (type) {
-        case 'SCOUT': {
-            ctx.beginPath();
-            ctx.moveTo(cx, size * 0.85);
-            ctx.lineTo(cx + size * 0.35, size * 0.25);
-            ctx.lineTo(cx + size * 0.15, size * 0.15);
-            ctx.lineTo(cx, size * 0.22);
-            ctx.lineTo(cx - size * 0.15, size * 0.15);
-            ctx.lineTo(cx - size * 0.35, size * 0.25);
-            ctx.closePath();
-            ctx.fillStyle = bodyGrad;
-            ctx.fill();
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-            ctx.fillStyle = '#ef4444';
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = '#ff0044';
-            ctx.fillRect(cx - 12, size * 0.6, 24, 5);
-            break;
-        }
-        default: {
-            ctx.beginPath();
-            ctx.moveTo(cx, size * 0.85);
-            ctx.lineTo(cx + size * 0.35, size * 0.2);
-            ctx.lineTo(cx - size * 0.35, size * 0.2);
-            ctx.closePath();
-            ctx.fillStyle = bodyGrad;
-            ctx.fill();
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(cx - 12, size * 0.5, 24, 6);
-            break;
-        }
-    }
+    ctx.beginPath();
+    ctx.moveTo(cx, size * 0.85);
+    ctx.lineTo(cx + size * 0.35, size * 0.2);
+    ctx.lineTo(cx - size * 0.35, size * 0.2);
+    ctx.closePath();
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(cx - 12, size * 0.5, 24, 6);
 
     ctx.restore();
     return canvas;
