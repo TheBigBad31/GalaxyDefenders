@@ -11,6 +11,7 @@ import { ShipSelection } from './components/screens/ShipSelection';
 import { GameOver } from './components/screens/GameOver';
 import { SidePanel } from './components/SidePanel';
 import { FlyingIcons, FlyingPowerUp } from './components/ui/FlyingIcons';
+import { authService, UserProfile } from './services/authService';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [flyingPowerUps, setFlyingPowerUps] = useState<FlyingPowerUp[]>([]);
   const [selectedShip, setSelectedShip] = useState<ShipConfig>(SHIPS[0]);
   const [bossStatus, setBossStatus] = useState<BossStatus>({ active: false, name: '', hp: 0, maxHp: 1, color: '' });
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => authService.getCurrentUser());
   
   const gameCanvasRef = useRef<GameCanvasRef>(null);
   
@@ -38,6 +40,18 @@ const App: React.FC = () => {
       flameLevel: 0,
       sidewinderLevel: 0
   });
+
+  useEffect(() => {
+    // S'abonner aux changements d'authentification (Google, SSO AppHub, Déconnexion)
+    const unsubscribe = authService.subscribe((user) => {
+      setCurrentUser(user);
+    });
+
+    // Initialiser Google Identity Services en arrière-plan sans bloquer
+    authService.initGoogleIdentity();
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -149,6 +163,7 @@ const App: React.FC = () => {
                         onStart={handleStartGame}
                         onHelp={() => setShowHelp(true)}
                         gamepadConnected={gamepadConnected}
+                        user={currentUser}
                     />
                 )}
 
@@ -187,6 +202,7 @@ const App: React.FC = () => {
             volumeLevel={volumeLevel}
             onCheat={handleCheat}
             onToggleVolume={toggleVolume}
+            user={currentUser}
         />
 
       </div>

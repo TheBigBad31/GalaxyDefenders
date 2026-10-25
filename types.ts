@@ -204,7 +204,8 @@ export interface Particle {
   life: number;
   color: string;
   size: number;
-  type?: 'SPARK' | 'SMOKE' | 'FLASH'; 
+  type?: 'SPARK' | 'SMOKE' | 'FLASH' | 'TEXT';
+  text?: string; 
   decay?: number;
 }
 

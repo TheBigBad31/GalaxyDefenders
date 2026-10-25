@@ -2,6 +2,8 @@ import React from 'react';
 import { Component, Terminal, Volume2, Volume1, VolumeX, Cpu } from 'lucide-react';
 import { ShipBlueprint } from './ShipBlueprint';
 import { PlayerStats } from '../types';
+import { UserProfile, authService } from '../services/authService';
+import { PlayerProfileBadge } from './ui/PlayerProfileBadge';
 
 interface SidePanelProps {
     playerStats: PlayerStats;
@@ -14,12 +16,14 @@ interface SidePanelProps {
     volumeLevel: number;
     onCheat: () => void;
     onToggleVolume: () => void;
+    user?: UserProfile;
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
     playerStats, score, level, hp, maxHp, shieldEnergy, missileProgress,
-    volumeLevel, onCheat, onToggleVolume
+    volumeLevel, onCheat, onToggleVolume, user
 }) => {
+    const currentUser = user || authService.getCurrentUser();
     
     const getVolumeIcon = () => {
         switch(volumeLevel) {
@@ -31,16 +35,23 @@ export const SidePanel: React.FC<SidePanelProps> = ({
 
     return (
         <div id="ship-panel" className="w-[290px] bg-gray-950/85 backdrop-blur-xl border-2 border-cyan-500/40 rounded-2xl overflow-hidden shadow-[0_0_35px_rgba(6,182,212,0.2)] flex flex-col z-20 h-[600px] mt-[52px] transition-all">
+            {/* Top Pilot Profile Header */}
+            <div className="bg-gray-950/90 p-2.5 border-b border-cyan-900/50 flex justify-between items-center">
+                <PlayerProfileBadge user={currentUser} compact={false} />
+            </div>
+
             {/* Main HUD Component */}
-            <ShipBlueprint 
-                stats={playerStats} 
-                score={score}
-                level={level}
-                hp={hp}
-                maxHp={maxHp}
-                shieldEnergy={shieldEnergy}
-                missileProgress={missileProgress}
-            />
+            <div className="flex-1 overflow-hidden">
+                <ShipBlueprint 
+                    stats={playerStats} 
+                    score={score}
+                    level={level}
+                    hp={hp}
+                    maxHp={maxHp}
+                    shieldEnergy={shieldEnergy}
+                    missileProgress={missileProgress}
+                />
+            </div>
             
             {/* Footer / Utility Panel */}
             <div className="bg-gray-950/90 p-3 border-t border-cyan-900/50 flex justify-between items-center text-[10px] font-mono text-cyan-400/70">
