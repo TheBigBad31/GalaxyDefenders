@@ -4,6 +4,7 @@ import { AlienEntity, LegacyAdapterAlien } from './entity';
 import { BossAlien } from './boss';
 import { SniperAlien } from './sniper';
 import { StandardAlien } from './standard';
+import { JellyfishAlien } from './jellyfish';
 
 // Import remaining functional updates for legacy wrapping
 import { updateMothership } from './mothership';
@@ -42,11 +43,13 @@ export class AlienFactory {
             case AlienType.UFO:
                 return new LegacyAdapterAlien(props, updateUfo);
             
+            case AlienType.JELLYFISH:
+                return new JellyfishAlien(props);
+
             case AlienType.SCOUT:
             case AlienType.FIGHTER:
             case AlienType.ASSAULT:
             case AlienType.REFLECTOR:
-            case AlienType.JELLYFISH: // Mapped to standard for now or create specific if needed
             default:
                 // Default to standard class for basic enemies
                 return new StandardAlien(props);

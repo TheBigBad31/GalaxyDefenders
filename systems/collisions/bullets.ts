@@ -73,9 +73,8 @@ const handlePlayerBullet = (bullet: any, ctx: CollisionContext) => {
             // B. Flame Logic (Piercing/DoT)
             else if (bullet.variant === 'PLAYER_FLAME') {
                 bullet.active = false;
-                alien.hp -= bullet.damage || 0.25;
                 createExplosion(bullet.pos.x, bullet.pos.y, COLORS.powerupFlame, 'SMALL');
-                if (alien.hp <= 0) handleAlienHit(alien);
+                handleAlienHit(alien, bullet.damage || 0.25);
             }
             // C. Reflector Logic (Shield reflection)
             else if (alien.type === AlienType.REFLECTOR && (alien.shieldHp || 0) > 0) {
@@ -99,8 +98,7 @@ const handlePlayerBullet = (bullet: any, ctx: CollisionContext) => {
             // D. Standard Hit
             else {
                 bullet.active = false;
-                alien.hp -= bullet.damage || 1; 
-                if (alien.hp <= 0) handleAlienHit(alien);
+                handleAlienHit(alien, bullet.damage || 1);
             }
             
             break; // Bullet handles one alien at a time

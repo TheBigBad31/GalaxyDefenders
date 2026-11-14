@@ -7,4 +7,5 @@ export interface BulletUpdateContext {
     particles: Particle[];
     playSound: (type: SoundType) => void;
     player: Player;
+    bullets?: Bullet[];
 }

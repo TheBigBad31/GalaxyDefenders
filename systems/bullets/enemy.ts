@@ -33,6 +33,35 @@ export const updateEnemyBullet = (ctx: BulletUpdateContext) => {
 
         bullet.pos.x += bullet.vx;
         bullet.pos.y += bullet.velocity;
+    } else if (bullet.variant === 'ENEMY_POD') {
+        bullet.pos.y += bullet.velocity;
+        bullet.pos.x += bullet.vx;
+        bullet.life = (bullet.life ?? 60) - 1;
+
+        if (bullet.life <= 0) {
+            bullet.active = false;
+            if (ctx.bullets) {
+                const cx = bullet.pos.x + bullet.width / 2;
+                const cy = bullet.pos.y + bullet.height / 2;
+                const speed = 4.5;
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI * 2 * i) / 8;
+                    ctx.bullets.push({
+                        id: `pod-frag-${Date.now()}-${i}-${Math.random()}`,
+                        pos: { x: cx - 3, y: cy - 3 },
+                        width: 6,
+                        height: 6,
+                        vx: Math.cos(angle) * speed,
+                        velocity: Math.sin(angle) * speed,
+                        isEnemy: true,
+                        active: true,
+                        color: bullet.color,
+                        variant: 'ENEMY_FAST',
+                        damage: 1
+                    });
+                }
+            }
+        }
     } else {
         // Standard Enemy Bullet
         bullet.pos.y += bullet.velocity;
