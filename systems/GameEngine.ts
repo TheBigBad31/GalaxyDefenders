@@ -799,7 +799,7 @@ export class GameEngine {
         });
     }
 
-    private handleAlienHit(alien: Alien, damage: number) {
+    private handleAlienHit(alien: Alien, damage: number = 1) {
         if (!alien.active) return;
         alien.hp -= damage;
         alien.hitFlashTimer = 4;

@@ -39,6 +39,8 @@ export abstract class AlienEntity implements Alien {
     sniperTimer?: number;
     ufoState?: 'PATROL' | 'CHARGE' | 'BEAM';
     beamTimer?: number;
+    bossPhase?: 1 | 2;
+    hitFlashTimer?: number;
 
     constructor(props: Alien) {
         this.id = props.id;
@@ -75,6 +77,8 @@ export abstract class AlienEntity implements Alien {
         if (props.isGatlingFiring !== undefined) this.isGatlingFiring = props.isGatlingFiring;
         if (props.sniperPhase) this.sniperPhase = props.sniperPhase;
         if (props.ufoState) this.ufoState = props.ufoState;
+        if (props.bossPhase !== undefined) this.bossPhase = props.bossPhase;
+        if (props.hitFlashTimer !== undefined) this.hitFlashTimer = props.hitFlashTimer;
     }
 
     // Méthode polymorphique principale
