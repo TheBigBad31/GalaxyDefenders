@@ -634,7 +634,7 @@ export class GameEngine {
 
         // Bullets
         this.bullets.forEach(bullet => {
-            updateBullet({ bullet, gameTime: this.gameTime, particles: this.particles, playSound, player: this.player });
+            updateBullet({ bullet, bullets: this.bullets, gameTime: this.gameTime, particles: this.particles, playSound, player: this.player });
         });
 
         // Particles
@@ -738,8 +738,10 @@ export class GameEngine {
         });
     }
 
-    private handleAlienHit(alien: Alien) {
-        alien.hp -= 1;
+    private handleAlienHit(alien: Alien, damage: number) {
+        if (!alien.active) return;
+        alien.hp -= damage;
+        alien.hitFlashTimer = 4;
         let explosionColor = alien.color;
         if ((PALETTES as any)[alien.type]) explosionColor = (PALETTES as any)[alien.type]['1'];
         this.createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, explosionColor, 'SMALL');

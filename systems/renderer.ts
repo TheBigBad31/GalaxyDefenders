@@ -468,6 +468,7 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
 
 const renderPowerUps = (ctx: CanvasRenderingContext2D, powerUps: PowerUp[], gameTime: number, cache: Record<string, HTMLCanvasElement>) => {
     powerUps.forEach(p => {
+        if (p.lifeTime < 180 && Math.floor(p.lifeTime / 8) % 2 === 0) return;
         ctx.save();
         ctx.translate(p.pos.x + p.width/2, p.pos.y + p.height/2);
         const scale = 1.05 + Math.sin(gameTime * 0.12 + p.timeOffset) * 0.1;

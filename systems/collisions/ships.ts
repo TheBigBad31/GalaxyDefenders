@@ -19,7 +19,7 @@ export const handleShipCollisions = (ctx: CollisionContext) => {
         if (checkCollision(alien, player)) {
             // Kill Alien
             alien.hp = 0;
-            handleAlienHit(alien); 
+            handleAlienHit(alien, 1);
             
             // Damage Player
             const damageSource = alien.type === AlienType.KAMIKAZE ? 'KAMIKAZE_COLLISION' : 'DEFAULT_COLLISION';

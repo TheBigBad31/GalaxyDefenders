@@ -19,7 +19,7 @@ export interface CollisionContext {
     playSound: (type: any) => void;
     triggerMissileBlast: (x: number, y: number, size: MissileSize) => void;
     handleGameOver: (reason: string) => void;
-    handleAlienHit: (alien: Alien) => void;
+    handleAlienHit: (alien: Alien, damage: number) => void;
     handlePlayerHit: (sourceVariant: string) => void;
     onCollectPowerUp: (x: number, y: number, type: PowerUpType, color: string) => void;
     updateStats: () => void;
