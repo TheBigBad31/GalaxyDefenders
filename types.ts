@@ -4,6 +4,7 @@ export enum GameState {
   MENU = 'MENU',
   SHIP_SELECT = 'SHIP_SELECT',
   PLAYING = 'PLAYING',
+  PAUSED = 'PAUSED',
   GAME_OVER = 'GAME_OVER',
   VICTORY = 'VICTORY'
 }

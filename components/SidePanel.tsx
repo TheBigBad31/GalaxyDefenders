@@ -1,7 +1,7 @@
 import React from 'react';
-import { Component, Terminal, Volume2, Volume1, VolumeX, Cpu } from 'lucide-react';
+import { Component, Terminal, Volume2, Volume1, VolumeX, Cpu, Pause, Play, HelpCircle } from 'lucide-react';
 import { ShipBlueprint } from './ShipBlueprint';
-import { PlayerStats } from '../types';
+import { GameState, PlayerStats, ShipConfig } from '../types';
 import { UserProfile, authService } from '../services/authService';
 import { PlayerProfileBadge } from './ui/PlayerProfileBadge';
 
@@ -16,12 +16,16 @@ interface SidePanelProps {
     volumeLevel: number;
     onCheat: () => void;
     onToggleVolume: () => void;
+    selectedShip?: ShipConfig;
+    gameState?: GameState;
+    onTogglePause?: () => void;
+    onOpenHelp?: () => void;
     user?: UserProfile;
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
     playerStats, score, level, hp, maxHp, shieldEnergy, missileProgress,
-    volumeLevel, onCheat, onToggleVolume, user
+    volumeLevel, onCheat, onToggleVolume, selectedShip, gameState, onTogglePause, onOpenHelp, user
 }) => {
     const currentUser = user || authService.getCurrentUser();
     
@@ -49,7 +53,9 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                     hp={hp}
                     maxHp={maxHp}
                     shieldEnergy={shieldEnergy}
+                    maxShieldEnergy={selectedShip?.maxShieldEnergy ?? 100}
                     missileProgress={missileProgress}
+                    selectedShip={selectedShip}
                 />
             </div>
             
@@ -60,7 +66,27 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                     <span className="tracking-widest font-bold">CORE ONLINE</span>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
+                    {onTogglePause && (gameState === GameState.PLAYING || gameState === GameState.PAUSED) && (
+                        <button
+                            onClick={onTogglePause}
+                            className="p-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-800 transition-all border border-cyan-500/40 hover:border-cyan-400 text-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.2)]"
+                            title={gameState === GameState.PAUSED ? "Reprendre [P]" : "Pause [P]"}
+                        >
+                            {gameState === GameState.PAUSED ? <Play size={14} /> : <Pause size={14} />}
+                        </button>
+                    )}
+
+                    {onOpenHelp && (
+                        <button
+                            onClick={onOpenHelp}
+                            className="p-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-800 transition-all border border-cyan-500/40 hover:border-cyan-400 text-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.2)]"
+                            title="Codex / Aide"
+                        >
+                            <HelpCircle size={14} />
+                        </button>
+                    )}
+
                     <button 
                         onClick={onCheat}
                         className="p-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-800 transition-all group flex items-center gap-2 border border-yellow-600/50 hover:border-yellow-400 text-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.2)]"

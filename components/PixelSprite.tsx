@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { SPRITES } from '../constants/sprites';
-import { generateSpriteCanvas, HD_SHIPS } from '../utils/graphics';
+import { generateSpriteCanvas, HD_SHIPS, HD_ENEMIES, getTransparentImageCanvas } from '../utils/graphics';
 
 interface PixelSpriteProps {
   spriteKey: string;
@@ -37,7 +37,35 @@ const PixelSprite: React.FC<PixelSpriteProps> = ({ spriteKey, scale = 1 }) => {
         drawHD();
         return;
       } else {
-        img.onload = drawHD;
+        img.addEventListener('load', drawHD);
+        return () => img.removeEventListener('load', drawHD);
+      }
+    }
+
+    // Check if there is an HD PNG Image available for this enemy
+    if (HD_ENEMIES[spriteKey]) {
+      const img = HD_ENEMIES[spriteKey];
+      const drawEnemyHD = () => {
+        if (img.naturalWidth > 0) {
+          const cleanCanvas = getTransparentImageCanvas(spriteKey, img);
+          canvas.width = 32 * scale;
+          canvas.height = 32 * scale;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(cleanCanvas || img, 0, 0, canvas.width, canvas.height);
+          }
+        }
+      };
+
+      if (img.complete && img.naturalWidth > 0) {
+        drawEnemyHD();
+        return;
+      } else {
+        img.addEventListener('load', drawEnemyHD);
+        return () => img.removeEventListener('load', drawEnemyHD);
       }
     }
 

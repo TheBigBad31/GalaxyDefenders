@@ -9,6 +9,8 @@ import { BossBar } from './components/ui/BossBar';
 import { MainMenu } from './components/screens/MainMenu';
 import { ShipSelection } from './components/screens/ShipSelection';
 import { GameOver } from './components/screens/GameOver';
+import { PauseOverlay } from './components/screens/PauseOverlay';
+import { VictoryScreen } from './components/screens/VictoryScreen';
 import { SidePanel } from './components/SidePanel';
 import { FlyingIcons, FlyingPowerUp } from './components/ui/FlyingIcons';
 import { authService, UserProfile } from './services/authService';
@@ -66,7 +68,20 @@ const App: React.FC = () => {
         }
       }
       if (e.key === 'Escape') {
-          setShowHelp(false);
+          if (showHelp) {
+              setShowHelp(false);
+          } else if (gameState === GameState.PLAYING) {
+              setGameState(GameState.PAUSED);
+          } else if (gameState === GameState.PAUSED) {
+              setGameState(GameState.PLAYING);
+          }
+      }
+      if ((e.key === 'p' || e.key === 'P') && !showHelp) {
+          if (gameState === GameState.PLAYING) {
+              setGameState(GameState.PAUSED);
+          } else if (gameState === GameState.PAUSED) {
+              setGameState(GameState.PLAYING);
+          }
       }
     };
 
@@ -126,11 +141,25 @@ const App: React.FC = () => {
       setGameState(GameState.SHIP_SELECT);
   };
 
+  const handleTogglePause = () => {
+      if (gameState === GameState.PLAYING) {
+          setGameState(GameState.PAUSED);
+      } else if (gameState === GameState.PAUSED) {
+          setGameState(GameState.PLAYING);
+      }
+      (document.activeElement as HTMLElement)?.blur();
+  };
+
+  const handleRestartFromPause = () => {
+      setGameState(GameState.MENU);
+      setTimeout(() => setGameState(GameState.PLAYING), 0);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white p-4 font-mono overflow-hidden">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white p-2 sm:p-4 font-mono overflow-x-hidden">
       
       {/* Main Game Layout */}
-      <div className="flex gap-4 items-stretch relative">
+      <div className="flex flex-col lg:flex-row gap-4 items-center lg:items-stretch relative max-w-full">
         
         {/* Game Container Wrapper */}
         <div className="flex flex-col gap-2">
@@ -178,6 +207,18 @@ const App: React.FC = () => {
                 {/* HELP / CODEX Overlay */}
                 {showHelp && <GameHelp onClose={() => setShowHelp(false)} />}
 
+                {/* Pause Overlay */}
+                {gameState === GameState.PAUSED && (
+                    <PauseOverlay
+                        score={score}
+                        level={level}
+                        onResume={() => setGameState(GameState.PLAYING)}
+                        onRestart={handleRestartFromPause}
+                        onChangeShip={() => setGameState(GameState.SHIP_SELECT)}
+                        onMainMenu={() => setGameState(GameState.MENU)}
+                    />
+                )}
+
                 {/* Game Over Overlay */}
                 {gameState === GameState.GAME_OVER && (
                     <GameOver 
@@ -185,6 +226,16 @@ const App: React.FC = () => {
                         level={level}
                         taunt={taunt}
                         onRestart={() => setGameState(GameState.MENU)}
+                    />
+                )}
+
+                {/* Victory Overlay */}
+                {gameState === GameState.VICTORY && (
+                    <VictoryScreen
+                        score={score}
+                        level={level}
+                        onRestart={handleRestartFromPause}
+                        onMainMenu={() => setGameState(GameState.MENU)}
                     />
                 )}
             </div>
@@ -202,6 +253,10 @@ const App: React.FC = () => {
             volumeLevel={volumeLevel}
             onCheat={handleCheat}
             onToggleVolume={toggleVolume}
+            selectedShip={selectedShip}
+            gameState={gameState}
+            onTogglePause={handleTogglePause}
+            onOpenHelp={() => setShowHelp(true)}
             user={currentUser}
         />
 
