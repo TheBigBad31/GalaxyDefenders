@@ -1,5 +1,20 @@
 
 let lastExplosionTime = 0;
+const noiseBufferCache = new WeakMap<AudioContext, AudioBuffer>();
+
+const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
+    let buffer = noiseBufferCache.get(ctx);
+    if (!buffer) {
+        const bufferSize = Math.floor(ctx.sampleRate * 0.5); // Longer explosion
+        buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        noiseBufferCache.set(ctx, buffer);
+    }
+    return buffer;
+};
 
 export const playExplosion = (ctx: AudioContext, dest: AudioNode) => {
     const t = ctx.currentTime;
@@ -7,15 +22,9 @@ export const playExplosion = (ctx: AudioContext, dest: AudioNode) => {
     if (t - lastExplosionTime < 0.05) return; 
     lastExplosionTime = t;
 
-    const bufferSize = ctx.sampleRate * 0.5; // Longer explosion
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-    }
-    
     const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
+    noise.buffer = getNoiseBuffer(ctx);
+    noise.playbackRate.value = 0.85 + Math.random() * 0.3;
     const noiseGain = ctx.createGain();
     
     // REMOVED LowPass filter that was muffling the sound. 

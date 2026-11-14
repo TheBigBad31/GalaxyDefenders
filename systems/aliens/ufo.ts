@@ -1,9 +1,11 @@
 
 import { AlienUpdateContext } from './types';
-import { Alien } from '../../types';
 import { CANVAS_WIDTH } from '../../constants';
+import { AlienEntity } from './entity';
 
-export const updateUfo = (alien: Alien, ctx: AlienUpdateContext) => {
+export class UfoAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext) {
+        const alien = this;
     // Movement: Patrol Ping Pong
     alien.pos.x += alien.vx || 0;
     
@@ -19,3 +21,5 @@ export const updateUfo = (alien: Alien, ctx: AlienUpdateContext) => {
     
     // UFO does not fire bullets itself, it reflects them (handled in collision)
 };
+
+}

@@ -1,9 +1,14 @@
+import { nextId } from '../../utils/id';
 
 import { AlienUpdateContext } from './types';
 import { Alien, AlienType } from '../../types';
 import { COLORS, ALIEN_CONFIGS } from '../../constants';
 
-export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
+import { AlienEntity } from './entity';
+
+export class ArtilleryAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext) {
+        const alien = this;
     const { player, bullets, gameTime, createExplosion } = ctx;
     const isSupreme = alien.type === AlienType.SUPREME_ARTILLERY;
 
@@ -36,7 +41,7 @@ export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
                     const vx = Math.cos(a) * speed;
                     const vy = Math.sin(a) * speed;
                     bullets.push({
-                        id: Math.random().toString(),
+                        id: nextId(),
                         pos: { x: alien.pos.x + alien.width/2 - 6, y: alien.pos.y + alien.height },
                         width: 12, height: 12,
                         color: COLORS.enemyBulletDestructible, 
@@ -56,7 +61,7 @@ export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
                     const vx = Math.cos(a) * speed;
                     const vy = Math.sin(a) * speed;
                     bullets.push({
-                       id: Math.random().toString(),
+                       id: nextId(),
                        pos: { x: (alien.pos.x + alien.width / 2) + offsets[i] - 6, y: alien.pos.y + alien.height },
                        width: 12, height: 12,
                        color: COLORS.enemyBulletDestructible, 
@@ -93,3 +98,5 @@ export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
         createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height, '#fcd34d', 'SMALL');
     }
 };
+
+}

@@ -1,9 +1,14 @@
+import { nextId } from '../../utils/id';
 
 import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
 import { PALETTES, ALIEN_CONFIGS, DIFFICULTY_SCALE } from '../../constants';
 
-export const updateElite = (alien: Alien, ctx: AlienUpdateContext) => {
+import { AlienEntity } from './entity';
+
+export class EliteAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext) {
+        const alien = this;
     const { player, bullets, currentLevel, playSound } = ctx;
 
     // Movement: Swoop but stop at top
@@ -29,7 +34,7 @@ export const updateElite = (alien: Alien, ctx: AlienUpdateContext) => {
             const vx = Math.cos(angle) * speed;
             const vy = Math.sin(angle) * speed;
             bullets.push({
-               id: Math.random().toString(),
+               id: nextId(),
                pos: { x: alien.pos.x + alien.width / 2 - 4, y: alien.pos.y + alien.height },
                width: 8, height: 16,
                color: PALETTES.ELITE['3'], 
@@ -40,3 +45,5 @@ export const updateElite = (alien: Alien, ctx: AlienUpdateContext) => {
         playSound('SHOOT');
     }
 };
+
+}

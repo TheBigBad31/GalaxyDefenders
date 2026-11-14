@@ -1,17 +1,15 @@
 
 import { Alien, AlienType } from '../../types';
-import { AlienEntity, LegacyAdapterAlien } from './entity';
+import { AlienEntity } from './entity';
 import { BossAlien } from './boss';
 import { SniperAlien } from './sniper';
 import { StandardAlien } from './standard';
-
-// Import remaining functional updates for legacy wrapping
-import { updateMothership } from './mothership';
-import { updateKamikaze } from './kamikaze';
-import { updateGunner } from './gunner';
-import { updateArtillery } from './artillery';
-import { updateElite } from './elite';
-import { updateUfo } from './ufo';
+import { MothershipAlien } from './mothership';
+import { KamikazeAlien } from './kamikaze';
+import { GunnerAlien } from './gunner';
+import { ArtilleryAlien } from './artillery';
+import { EliteAlien } from './elite';
+import { UfoAlien } from './ufo';
 
 export class AlienFactory {
     static create(props: Alien): AlienEntity {
@@ -24,23 +22,23 @@ export class AlienFactory {
             
             case AlienType.MOTHERSHIP:
             case AlienType.SUPREME_MOTHERSHIP:
-                return new LegacyAdapterAlien(props, updateMothership);
+                return new MothershipAlien(props);
             
             case AlienType.KAMIKAZE:
-                return new LegacyAdapterAlien(props, updateKamikaze);
+                return new KamikazeAlien(props);
             
             case AlienType.GUNNER:
-                return new LegacyAdapterAlien(props, updateGunner);
+                return new GunnerAlien(props);
             
             case AlienType.ARTILLERY:
             case AlienType.SUPREME_ARTILLERY:
-                return new LegacyAdapterAlien(props, updateArtillery);
+                return new ArtilleryAlien(props);
             
             case AlienType.ELITE:
-                return new LegacyAdapterAlien(props, updateElite);
+                return new EliteAlien(props);
             
             case AlienType.UFO:
-                return new LegacyAdapterAlien(props, updateUfo);
+                return new UfoAlien(props);
             
             case AlienType.SCOUT:
             case AlienType.FIGHTER:

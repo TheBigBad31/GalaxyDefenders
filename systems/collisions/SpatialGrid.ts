@@ -7,6 +7,8 @@ export class SpatialGrid {
     private cols: number;
     private rows: number;
     private buckets: Entity[][];
+    private resultBuffer: Entity[] = [];
+    private queryId: number = 0;
 
     constructor(cellSize: number = 100) {
         this.cellSize = cellSize;
@@ -53,18 +55,23 @@ export class SpatialGrid {
         const minRow = Math.max(0, startRow);
         const maxRow = Math.min(this.rows - 1, endRow);
 
-        const candidates = new Set<Entity>();
+        this.resultBuffer.length = 0;
+        const currentQueryId = ++this.queryId;
 
         for (let y = minRow; y <= maxRow; y++) {
             for (let x = minCol; x <= maxCol; x++) {
                 const index = y * this.cols + x;
                 const bucket = this.buckets[index];
                 for (let i = 0; i < bucket.length; i++) {
-                    candidates.add(bucket[i]);
+                    const item = bucket[i] as Entity & { _gridQueryId?: number };
+                    if (item._gridQueryId !== currentQueryId) {
+                        item._gridQueryId = currentQueryId;
+                        this.resultBuffer.push(item);
+                    }
                 }
             }
         }
 
-        return Array.from(candidates);
+        return this.resultBuffer;
     }
 }
