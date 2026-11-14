@@ -8,6 +8,12 @@ export const handlePowerUps = (ctx: CollisionContext) => {
     const { powerUps, player, playSound, canvasRef, onCollectPowerUp, scoreRef, setScore, updateStats } = ctx;
 
     powerUps.forEach(p => {
+        p.lifeTime--;
+        if (p.lifeTime <= 0) {
+            p.active = false;
+            return;
+        }
+
         // 1. Physics (Movement & Bounce)
         p.pos.x += p.vx;
         p.pos.y += p.vy;

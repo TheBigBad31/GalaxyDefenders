@@ -33,6 +33,40 @@ export const updateEnemyBullet = (ctx: BulletUpdateContext) => {
 
         bullet.pos.x += bullet.vx;
         bullet.pos.y += bullet.velocity;
+    } else if (bullet.variant === 'ENEMY_POD') {
+        bullet.pos.y += bullet.velocity;
+        bullet.pos.x += bullet.vx;
+        if (bullet.lifeTime !== undefined) {
+            bullet.lifeTime--;
+            if (bullet.lifeTime <= 0) {
+                bullet.active = false;
+                const cx = bullet.pos.x + bullet.width / 2;
+                const cy = bullet.pos.y + bullet.height / 2;
+                const speed = 3.2;
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI * 2 * i) / 8;
+                    ctx.bullets?.push({
+                        id: `pod-frag-${Date.now()}-${i}-${Math.random()}`,
+                        pos: { x: cx - 3, y: cy - 3 },
+                        width: 6,
+                        height: 6,
+                        color: '#e879f9',
+                        active: true,
+                        vx: Math.cos(angle) * speed,
+                        velocity: Math.sin(angle) * speed,
+                        isEnemy: true,
+                        variant: 'ENEMY_FAST',
+                    });
+                }
+            }
+        }
+    } else if (bullet.variant === 'UFO_BEAM') {
+        if (bullet.lifeTime !== undefined) {
+            bullet.lifeTime--;
+            if (bullet.lifeTime <= 0) {
+                bullet.active = false;
+            }
+        }
     } else {
         // Standard Enemy Bullet
         bullet.pos.y += bullet.velocity;

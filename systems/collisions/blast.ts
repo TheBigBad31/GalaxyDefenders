@@ -48,9 +48,7 @@ export const handleBlastZones = (ctx: CollisionContext) => {
                 const dist = Math.hypot(center.x - zone.x, center.y - zone.y);
                 
                 if (dist < zone.radius) {
-                    alien.hp -= zone.damage || 0.5; 
-                    if (alien.hp <= 0) handleAlienHit(alien);
-                    else createExplosion(center.x, center.y, '#ff0000', 'SMALL');
+                    handleAlienHit(alien, zone.damage || 0.5);
                 }
             });
         }
