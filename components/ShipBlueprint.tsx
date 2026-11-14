@@ -5,6 +5,7 @@ import { PlayerStats } from '../types';
 import { HealthGauge, ShieldGauge, MissileGauge } from './ui/StatusGauges';
 import { Zap, Crosshair, Hexagon, Rocket, Flame, Radio, Scan, Trophy, Activity, Shield, Swords } from 'lucide-react';
 import { WEAPON_BALANCE } from '../constants';
+import { highScoreService } from '../services/highScoreService';
 
 interface ShipBlueprintProps {
     stats: PlayerStats;
@@ -137,7 +138,12 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
             {/* Score & Level Row */}
             <div className="flex justify-between items-end">
                 <div>
-                    <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Score</div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] text-gray-500 uppercase tracking-widest">Score</span>
+                        <span className="text-[9px] text-amber-400/90 font-mono font-bold tracking-wider">
+                            BEST {Math.max(score, highScoreService.getGlobalBest()).toString().padStart(6, '0')}
+                        </span>
+                    </div>
                     <div className="text-xl tracking-wider text-green-400 font-bold drop-shadow-[0_0_5px_rgba(74,222,128,0.5)] flex items-center gap-2">
                          <Trophy size={14} className="text-yellow-500"/>
                          {score.toString().padStart(6, '0')}

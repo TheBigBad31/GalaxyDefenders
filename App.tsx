@@ -183,6 +183,9 @@ const App: React.FC = () => {
                     <GameOver 
                         score={score}
                         level={level}
+                        shipId={selectedShip.id}
+                        pilotName={currentUser.name}
+                        pilotId={currentUser.id}
                         taunt={taunt}
                         onRestart={() => setGameState(GameState.MENU)}
                     />
