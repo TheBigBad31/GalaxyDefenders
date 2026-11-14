@@ -21,6 +21,7 @@ export interface CollisionContext {
     handleGameOver: (reason: string) => void;
     handleAlienHit: (alien: Alien) => void;
     handlePlayerHit: (sourceVariant: string) => void;
+    onDeflect?: () => void;
     onCollectPowerUp: (x: number, y: number, type: PowerUpType, color: string) => void;
     updateStats: () => void;
     bossActiveRef: { current: boolean };

@@ -10,12 +10,14 @@ import { MainMenu } from './components/screens/MainMenu';
 import { ShipSelection } from './components/screens/ShipSelection';
 import { GameOver } from './components/screens/GameOver';
 import { SidePanel } from './components/SidePanel';
+import { ComboState, createComboState } from './systems/combo';
 import { FlyingIcons, FlyingPowerUp } from './components/ui/FlyingIcons';
 import { authService, UserProfile } from './services/authService';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
   const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState<ComboState>(createComboState);
   const [level, setLevel] = useState(1);
   const [taunt, setTaunt] = useState<string>("");
   const [volumeLevel, setVolumeLevel] = useState(2); // 0: Mute, 1: Low, 2: High
@@ -144,6 +146,7 @@ const App: React.FC = () => {
                     gameState={gameState} 
                     setGameState={setGameState} 
                     setScore={setScore}
+                    setCombo={setCombo}
                     setTaunt={setTaunt}
                     setLevel={setLevel}
                     setHp={setHp}
@@ -194,6 +197,7 @@ const App: React.FC = () => {
         <SidePanel 
             playerStats={playerStats}
             score={score}
+            combo={combo}
             level={level}
             hp={hp}
             maxHp={maxHp}

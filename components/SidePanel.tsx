@@ -4,10 +4,12 @@ import { ShipBlueprint } from './ShipBlueprint';
 import { PlayerStats } from '../types';
 import { UserProfile, authService } from '../services/authService';
 import { PlayerProfileBadge } from './ui/PlayerProfileBadge';
+import { ComboState } from '../systems/combo';
 
 interface SidePanelProps {
     playerStats: PlayerStats;
     score: number;
+    combo?: ComboState;
     level: number;
     hp: number;
     maxHp: number;
@@ -20,7 +22,7 @@ interface SidePanelProps {
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
-    playerStats, score, level, hp, maxHp, shieldEnergy, missileProgress,
+    playerStats, score, combo, level, hp, maxHp, shieldEnergy, missileProgress,
     volumeLevel, onCheat, onToggleVolume, user
 }) => {
     const currentUser = user || authService.getCurrentUser();
@@ -52,6 +54,19 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                     missileProgress={missileProgress}
                 />
             </div>
+            {combo && combo.count > 0 && (
+                <div className="px-2 py-1 bg-slate-900/90 border border-amber-500/40 rounded flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-amber-400 tracking-wider">
+                        COMBO x{combo.multiplier} ({combo.count})
+                    </span>
+                    <div className="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
+                        <div
+                            className="h-full bg-amber-400 transition-all duration-75"
+                            style={{ width: `${Math.round((combo.timer / combo.maxTimer) * 100)}%` }}
+                        />
+                    </div>
+                </div>
+            )}
             
             {/* Footer / Utility Panel */}
             <div className="bg-gray-950/90 p-3 border-t border-cyan-900/50 flex justify-between items-center text-[10px] font-mono text-cyan-400/70">

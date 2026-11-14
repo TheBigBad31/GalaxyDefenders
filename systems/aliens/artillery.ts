@@ -2,10 +2,15 @@
 import { AlienUpdateContext } from './types';
 import { Alien, AlienType } from '../../types';
 import { COLORS, ALIEN_CONFIGS } from '../../constants';
+import { checkBossPhaseTransition } from './bossPhase';
 
 export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
-    const { player, bullets, gameTime, createExplosion } = ctx;
+    const { player, bullets, gameTime, createExplosion, playSound } = ctx;
     const isSupreme = alien.type === AlienType.SUPREME_ARTILLERY;
+    if (isSupreme) {
+        checkBossPhaseTransition(alien, createExplosion, playSound);
+    }
+    const phase2 = isSupreme && alien.bossPhase === 2;
 
     // Movement: Hover & Sine
     alien.pos.y = Math.min(isSupreme ? 80 : 100, alien.pos.y + alien.vy); 
@@ -47,7 +52,20 @@ export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
                 alien.burstRemaining = (alien.burstRemaining || 0) - 1;
                 // Increased interval between fan waves from 60 (1s) to 90 (1.5s) for Boss
                 // This makes the wall less dense and gives time to weave
-                alien.burstTimer = 90; 
+                alien.burstTimer = phase2 ? 65 : 90; 
+                if (phase2) {
+                    // Cross-fire side shots
+                    [-2.5, 2.5].forEach(vx => {
+                        bullets.push({
+                            id: Math.random().toString(),
+                            pos: { x: alien.pos.x + (vx < 0 ? 10 : alien.width - 10), y: alien.pos.y + alien.height / 2 },
+                            width: 10, height: 10,
+                            color: '#f43f5e',
+                            active: true, velocity: 3.5, vx, isEnemy: true,
+                            bulletType: 'FAST', variant: 'ENEMY_FAST'
+                        });
+                    });
+                }
             } else {
                 // NORMAL ATTACK: Dual Destructible Stream
                 const angles = [angle - 0.15, angle + 0.15];

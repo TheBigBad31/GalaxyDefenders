@@ -137,6 +137,9 @@ export interface Alien extends Entity {
   hp: number;
   maxHp: number;
   shieldHp?: number; 
+  burnTimer?: number;
+  burnDamage?: number;
+  bossPhase?: 1 | 2;
   movementType: MovementType;
   startX: number;
   baseY?: number; // Added for vertical oscillation reference
@@ -182,6 +185,7 @@ export interface Bullet extends Entity {
   missileSize?: MissileSize; // Added size property
   life?: number;
   damage?: number; // Added damage property
+  homing?: boolean;
 }
 
 export interface PowerUp extends Entity {
