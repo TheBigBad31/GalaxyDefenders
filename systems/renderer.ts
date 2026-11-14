@@ -9,7 +9,8 @@ import {
     BlastZone,
     Star,
     Nebula,
-    GameState
+    GameState,
+    ShipId
 } from '../types';
 import { 
     CANVAS_WIDTH, 
@@ -18,6 +19,38 @@ import {
     PALETTES
 } from '../constants';
 import { HD_SHIPS, HD_ENEMIES, getTransparentImageCanvas, colorToRgba, getGlowSprite } from '../utils/graphics';
+
+const SHIP_THRUSTER_COLORS: Record<ShipId, string> = {
+    MATTEWS: '#38bdf8',
+    TOPHE: '#06b6d4',
+    BOLTON: '#f97316',
+    JEFF: '#a855f7',
+    MICKA: '#22c55e',
+    BALI: '#ef4444',
+};
+
+export const getShipThrusterColor = (shipId: ShipId): string => {
+    return SHIP_THRUSTER_COLORS[shipId] || '#38bdf8';
+};
+
+let hitFlashCanvas: HTMLCanvasElement | null = null;
+let hitFlashCtx: CanvasRenderingContext2D | null = null;
+
+const getHitFlashCanvas = (width: number, height: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null => {
+    if (typeof document === 'undefined') return null;
+    if (!hitFlashCanvas) {
+        hitFlashCanvas = document.createElement('canvas');
+        hitFlashCtx = hitFlashCanvas.getContext('2d');
+    }
+    if (!hitFlashCtx) return null;
+    if (hitFlashCanvas.width !== width || hitFlashCanvas.height !== height) {
+        hitFlashCanvas.width = width;
+        hitFlashCanvas.height = height;
+    } else {
+        hitFlashCtx.clearRect(0, 0, width, height);
+    }
+    return { canvas: hitFlashCanvas, ctx: hitFlashCtx };
+};
 
 // --- OFFSCREEN CACHES ---
 
@@ -379,7 +412,8 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, player: Player, gameTime: n
 
     // Glowing Thruster Flames under ship (no createLinearGradient / shadowBlur)
     const flameHeight = 10 + Math.random() * 8;
-    const flameColor = player.shipId === 'TOPHE' ? '#06b6d4' : (player.shipId === 'JEFF' ? '#a855f7' : (player.shipId === 'BOLTON' ? '#f97316' : '#ef4444'));
+    const thrusterColor = getShipThrusterColor(player.shipId);
+    const flameColor = thrusterColor;
     const prevOp = ctx.globalCompositeOperation;
     ctx.globalCompositeOperation = 'lighter';
     ctx.drawImage(getGlowSprite(flameColor), cx - 10, player.pos.y + player.height - 4, 20, flameHeight + 8);
@@ -542,9 +576,43 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
         const transparentCanvas = getTransparentImageCanvas(alien.type.toString(), hdEnemy, maxDim);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(transparentCanvas || hdEnemy, alien.pos.x, alien.pos.y, alien.width, alien.height);
+        const source = transparentCanvas || hdEnemy;
+        ctx.drawImage(source, alien.pos.x, alien.pos.y, alien.width, alien.height);
+
+        if ((alien.hitFlashTimer || 0) > 0) {
+            const flashW = transparentCanvas ? transparentCanvas.width : hdEnemy.naturalWidth;
+            const flashH = transparentCanvas ? transparentCanvas.height : hdEnemy.naturalHeight;
+            const flash = getHitFlashCanvas(flashW, flashH);
+            if (flash) {
+                flash.ctx.drawImage(source, 0, 0, flashW, flashH);
+                flash.ctx.globalCompositeOperation = 'source-atop';
+                flash.ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                flash.ctx.fillRect(0, 0, flashW, flashH);
+                flash.ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(flash.canvas, alien.pos.x, alien.pos.y, alien.width, alien.height);
+            }
+        }
     } else {
         drawCachedSprite(ctx, cache, spriteKey, alien.pos.x, alien.pos.y, alien.width, alien.height);
+    }
+
+    if (
+        alien.hp < alien.maxHp &&
+        (alien.type === AlienType.ELITE ||
+            alien.type === AlienType.GUNNER ||
+            alien.type === AlienType.ARTILLERY ||
+            alien.type === AlienType.MOTHERSHIP)
+    ) {
+        const barW = alien.width;
+        const barH = 3;
+        const barX = alien.pos.x;
+        const barY = alien.pos.y - 6;
+        const ratio = Math.max(0, Math.min(1, hpRatio));
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#eab308' : '#ef4444';
+        ctx.fillRect(barX, barY, barW * ratio, barH);
     }
     ctx.restore();
 };
@@ -632,10 +700,19 @@ export const drawGame = (
         gameTime: number;
         level: number;
         state: GameState;
+        shakeIntensity?: number;
     },
     cache: Record<string, HTMLCanvasElement>
 ) => {
     ctx.imageSmoothingEnabled = false;
+
+    const shake = gameState.shakeIntensity || 0;
+    ctx.save();
+    if (shake > 0.2) {
+        const dx = (Math.random() * 2 - 1) * shake;
+        const dy = (Math.random() * 2 - 1) * shake;
+        ctx.translate(dx, dy);
+    }
 
     renderBackground(ctx, gameState.stars, gameState.nebulas, gameState.gameTime);
     renderBlastZones(ctx, gameState.blastZones, gameState.gameTime);
@@ -648,5 +725,7 @@ export const drawGame = (
     gameState.aliens.forEach(a => renderAlien(ctx, a, gameState.gameTime, gameState.player, cache));
     renderPowerUps(ctx, gameState.powerUps, gameState.gameTime, cache);
     renderParticles(ctx, gameState.particles);
+    ctx.restore();
+
     renderOverlays(ctx);
 };

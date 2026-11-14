@@ -1,4 +1,3 @@
-
 import { CollisionContext } from './types';
 import { checkCollision } from './utils';
 import { AlienType, Alien } from '../../types';
@@ -44,6 +43,7 @@ const handleEnemyBullet = (bullet: any, ctx: CollisionContext) => {
                 setHp(player.hp);
             }
             createExplosion(bullet.pos.x, bullet.pos.y, '#4ade80', 'SMALL');
+            ctx.onDeflect?.();
             return; 
         }
     }
@@ -78,6 +78,8 @@ const handlePlayerBullet = (bullet: any, ctx: CollisionContext) => {
             // B. Flame Logic (Piercing/DoT)
             else if (bullet.variant === 'PLAYER_FLAME') {
                 bullet.active = false;
+                alien.burnTimer = 90;
+                alien.burnDamage = 0.05;
                 handleAlienHit(alien, bullet.damage || 0.25);
             }
             // C. Reflector Logic (Shield reflection)

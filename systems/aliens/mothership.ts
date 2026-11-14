@@ -4,12 +4,17 @@ import { AlienUpdateContext } from './types';
 import { Alien, AlienType } from '../../types';
 import { spawnKamikaze } from '../spawning/factories';
 import { COLORS } from '../../constants';
+import { checkBossPhaseTransition } from './bossPhase';
 
 export class MothershipAlien extends AlienEntity {
     update(ctx: AlienUpdateContext): void {
         const alien: Alien = this;
     const { gameTime, aliens, bullets, playSound, player, createExplosion } = ctx;
     const isSupreme = alien.type === AlienType.SUPREME_MOTHERSHIP;
+    if (isSupreme) {
+        checkBossPhaseTransition(alien, createExplosion, playSound);
+    }
+    const phase2 = isSupreme && alien.bossPhase === 2;
 
     // Movement: Slow sine wave
     alien.pos.y = Math.min(60, alien.pos.y + alien.vy); 
@@ -25,7 +30,7 @@ export class MothershipAlien extends AlienEntity {
                 aliens.push(spawnKamikaze(alien.pos.x + 30, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
                 aliens.push(spawnKamikaze(alien.pos.x + alien.width - 30, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
                 aliens.push(spawnKamikaze(alien.pos.x + alien.width - 20, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
-                alien.spawnTimer = 180; // 3 seconds interval
+                alien.spawnTimer = phase2 ? 120 : 180; // Faster in Phase 2
             } else {
                 // DUAL SPAWN
                 aliens.push(spawnKamikaze(alien.pos.x, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));

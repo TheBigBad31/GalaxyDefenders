@@ -3,6 +3,7 @@ import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
 import { COLORS } from '../../constants';
 import { AlienEntity } from './entity';
+import { checkBossPhaseTransition } from './bossPhase';
 
 export class BossAlien extends AlienEntity {
     constructor(props: Alien) {
@@ -18,7 +19,9 @@ export class BossAlien extends AlienEntity {
     }
 
     update(ctx: AlienUpdateContext) {
-        const { player, gameTime, bullets, playSound } = ctx;
+        const { player, gameTime, bullets, playSound, createExplosion } = ctx;
+        checkBossPhaseTransition(this, createExplosion, playSound);
+        const phase2 = this.bossPhase === 2;
 
         // 1. Movement: Tracking with inertia
         const targetX = player.pos.x + player.width / 2 - this.width / 2;
@@ -39,7 +42,8 @@ export class BossAlien extends AlienEntity {
             this.gatlingTimer = this.isGatlingFiring ? 180 : 120;
         }
 
-        if (this.isGatlingFiring && gameTime % 12 === 0) { 
+        const gatlingCadence = phase2 ? 8 : 12;
+        if (this.isGatlingFiring && gameTime % gatlingCadence === 0) { 
             const gunOffsets = [10, 40, this.width - 40, this.width - 10]; // 4 distinct cannons
             gunOffsets.forEach(offset => {
                 bullets.push({
@@ -56,6 +60,28 @@ export class BossAlien extends AlienEntity {
                 });
             });
             if (gameTime % 24 === 0) playSound('SHOOT');
+        }
+
+        // Phase 2 extra: alternating aimed fan salvo
+        if (phase2 && gameTime % 90 === 0) {
+            const cx = this.pos.x + this.width / 2;
+            const cy = this.pos.y + this.height;
+            const baseAngle = Math.atan2((player.pos.y + player.height / 2) - cy, (player.pos.x + player.width / 2) - cx);
+            for (let i = -2; i <= 2; i++) {
+                const a = baseAngle + i * 0.18;
+                bullets.push({
+                    id: `boss-p2-fan-${Math.random()}`,
+                    pos: { x: cx - 5, y: cy },
+                    width: 10, height: 10,
+                    color: '#f43f5e',
+                    active: true,
+                    velocity: Math.sin(a) * 4.2,
+                    vx: Math.cos(a) * 4.2,
+                    isEnemy: true,
+                    bulletType: 'FAST',
+                    variant: 'ENEMY_FAST'
+                });
+            }
         }
 
         // 3. Attack: SPIRAL (Continuous Double Stream)

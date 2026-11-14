@@ -1,15 +1,16 @@
-
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { 
   GameState, AlienType, PowerUpType, PlayerStats, ShipConfig, BossStatus
 } from '../types';
 import { GameEngine } from '../systems/GameEngine';
+import { ComboState } from '../systems/combo';
 import { generateAlienTaunt } from '../services/tauntService';
 
 interface GameCanvasProps {
   gameState: GameState;
   setGameState: (state: GameState) => void;
   setScore: (score: number) => void;
+  setCombo?: (combo: ComboState) => void;
   setTaunt: (taunt: string) => void;
   setLevel: (level: number) => void;
   setHp: (hp: number) => void;
@@ -29,7 +30,7 @@ export interface GameCanvasRef {
 }
 
 const GameCanvas = forwardRef<GameCanvasRef, GameCanvasProps>(({ 
-  gameState, setGameState, setScore, setTaunt, setLevel, setHp, setMaxHp,
+  gameState, setGameState, setScore, setCombo, setTaunt, setLevel, setHp, setMaxHp,
   setGamepadConnected, setShieldEnergy, setPlayerStats, onCollectPowerUp, setMissileProgress,
   setBossStatus, selectedShip
 }, ref) => {
@@ -54,6 +55,7 @@ const GameCanvas = forwardRef<GameCanvasRef, GameCanvasProps>(({
     // Create Engine with callbacks bound to React setters
     const engine = new GameEngine(canvasRef.current, {
         setScore,
+        setCombo,
         setTaunt,
         setLevel,
         setHp,
