@@ -153,8 +153,24 @@ export class GameEngine {
     }
 
     // --- INPUT HANDLERS ---
-    private handleKeyDown = (e: KeyboardEvent) => { this.keys[e.key] = true; };
-    private handleKeyUp = (e: KeyboardEvent) => { this.keys[e.key] = false; };
+    private handleKeyDown = (e: KeyboardEvent) => {
+        if (
+            this.gameState === GameState.PLAYING &&
+            (e.code === 'ArrowUp' ||
+                e.code === 'ArrowDown' ||
+                e.code === 'ArrowLeft' ||
+                e.code === 'ArrowRight' ||
+                e.code === 'Space')
+        ) {
+            e.preventDefault();
+        }
+        this.keys[e.code] = true;
+        this.keys[e.key] = true;
+    };
+    private handleKeyUp = (e: KeyboardEvent) => {
+        this.keys[e.code] = false;
+        this.keys[e.key] = false;
+    };
     private handleGamepadConnected = () => { this.callbacks.setGamepadConnected(true); playSound('SHIELD'); };
     private handleGamepadDisconnected = () => {
         const gps = navigator.getGamepads();
@@ -251,12 +267,20 @@ export class GameEngine {
     }
 
     // --- MAIN LOOP ---
+    private accumulator: number = 0;
+    private readonly FIXED_DT: number = 1000 / 60;
 
     private loop = (time: number) => {
-        const dt = time - this.lastTime;
+        const rawDt = time - this.lastTime;
         this.lastTime = time;
+        const dt = Math.min(Math.max(rawDt, 0), 100);
+        this.accumulator += dt;
 
-        this.update(dt);
+        while (this.accumulator >= this.FIXED_DT) {
+            this.update(this.FIXED_DT);
+            this.accumulator -= this.FIXED_DT;
+        }
+
         this.draw();
 
         this.animationFrameId = requestAnimationFrame(this.loop);

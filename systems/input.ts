@@ -82,14 +82,20 @@ export const getInputState = (
         return input;
     }
 
-    if (keys['ArrowLeft']) input.dx -= 1;
-    if (keys['ArrowRight']) input.dx += 1;
-    if (keys['ArrowUp']) input.dy -= 1;
-    if (keys['ArrowDown']) input.dy += 1;
-    
+    if (keys['ArrowLeft'] || keys['KeyA'] || keys['KeyQ']) input.dx -= 1;
+    if (keys['ArrowRight'] || keys['KeyD']) input.dx += 1;
+    if (keys['ArrowUp'] || keys['KeyW'] || keys['KeyZ']) input.dy -= 1;
+    if (keys['ArrowDown'] || keys['KeyS']) input.dy += 1;
+
+    const mag = Math.hypot(input.dx, input.dy);
+    if (mag > 1) {
+        input.dx /= mag;
+        input.dy /= mag;
+    }
+
     if (keys[' '] || keys['Space']) input.fire = true;
-    if (keys['r'] || keys['R']) input.shield = true;
-    if (keys['x'] || keys['X'] || keys['c'] || keys['C']) input.missile = true;
+    if (keys['ShiftLeft'] || keys['ShiftRight'] || keys['KeyR'] || keys['r'] || keys['R']) input.shield = true;
+    if (keys['KeyX'] || keys['KeyC'] || keys['x'] || keys['X'] || keys['c'] || keys['C']) input.missile = true;
     if (keys['Enter'] || keys['Space']) input.start = true;
 
     return input;
