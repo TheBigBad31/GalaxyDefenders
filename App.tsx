@@ -226,6 +226,9 @@ const App: React.FC = () => {
                         level={level}
                         taunt={taunt}
                         onRestart={() => setGameState(GameState.MENU)}
+                        shipId={selectedShip.id}
+                        pilotName={currentUser.name}
+                        pilotId={currentUser.id}
                     />
                 )}
 
@@ -258,6 +261,7 @@ const App: React.FC = () => {
             onTogglePause={handleTogglePause}
             onOpenHelp={() => setShowHelp(true)}
             user={currentUser}
+            shipId={selectedShip.id}
         />
 
       </div>

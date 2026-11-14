@@ -21,11 +21,12 @@ interface SidePanelProps {
     onTogglePause?: () => void;
     onOpenHelp?: () => void;
     user?: UserProfile;
+    shipId?: string;
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
     playerStats, score, level, hp, maxHp, shieldEnergy, missileProgress,
-    volumeLevel, onCheat, onToggleVolume, selectedShip, gameState, onTogglePause, onOpenHelp, user
+    volumeLevel, onCheat, onToggleVolume, selectedShip, gameState, onTogglePause, onOpenHelp, user, shipId
 }) => {
     const currentUser = user || authService.getCurrentUser();
     
@@ -56,6 +57,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                     maxShieldEnergy={selectedShip?.maxShieldEnergy ?? 100}
                     missileProgress={missileProgress}
                     selectedShip={selectedShip}
+                    shipId={shipId}
                 />
             </div>
             

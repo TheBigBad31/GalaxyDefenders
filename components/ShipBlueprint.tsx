@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import PixelSprite from './PixelSprite';
 import { PlayerStats, ShipConfig } from '../types';
 import { HealthGauge, ShieldGauge, MissileGauge } from './ui/StatusGauges';
 import { Zap, Crosshair, Hexagon, Rocket, Flame, Radio, Scan, Trophy, Activity, Shield, Swords } from 'lucide-react';
 import { WEAPON_BALANCE } from '../constants';
+import { highScoreService } from '../services/highScoreService';
 
 interface ShipBlueprintProps {
     stats: PlayerStats;
@@ -16,6 +16,7 @@ interface ShipBlueprintProps {
     maxShieldEnergy: number;
     missileProgress: number;
     selectedShip?: ShipConfig;
+    shipId?: string;
 }
 
 // Configuration des modules pour l'affichage (position relative au conteneur du vaisseau)
@@ -28,8 +29,11 @@ const MODULES = [
 ];
 
 export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({ 
-    stats, score, level, hp, maxHp, shieldEnergy, maxShieldEnergy, missileProgress, selectedShip 
+    stats, score, level, hp, maxHp, shieldEnergy, maxShieldEnergy, missileProgress, selectedShip, shipId 
 }) => {
+    const effectiveShipId = shipId || selectedShip?.id;
+    const bestScore = Math.max(score, highScoreService.getBestScore(effectiveShipId));
+
     // State to track which modules just leveled up for animation
     const [levelUpState, setLevelUpState] = useState<Record<string, boolean>>({});
     const prevStats = useRef<PlayerStats>(stats);
@@ -113,16 +117,16 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
 
     const currentDps = calculateDPS();
 
-    const renderPips = (current: number, max: number, activeClass: string) => {
+    const renderPips = (current: number, max: number, bgClass: string) => {
         return (
             <div className="flex gap-[2px] mt-1">
                 {Array.from({ length: max }).map((_, i) => (
                     <div 
-                        key={i}
-                        className={`h-1.5 w-full rounded-[1px] transition-all duration-300 ${
+                        key={i} 
+                        className={`h-1.5 flex-1 rounded-[1px] transition-all duration-300 ${
                             i < current 
-                            ? `${activeClass} shadow-[0_0_5px_currentColor]` 
-                            : 'bg-gray-800'
+                                ? `${bgClass} shadow-[0_0_5px_currentColor]` 
+                                : 'bg-gray-800 opacity-40'
                         }`}
                     />
                 ))}
@@ -139,6 +143,9 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
             {/* Score & Level Row */}
             <div className="flex justify-between items-end">
                 <div>
+                    <div className="text-[9px] text-amber-400/80 uppercase tracking-widest mb-0.5 font-mono">
+                        BEST {bestScore.toString().padStart(6, '0')}
+                    </div>
                     <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Score</div>
                     <div className="text-xl tracking-wider text-green-400 font-bold drop-shadow-[0_0_5px_rgba(74,222,128,0.5)] flex items-center gap-2">
                          <Trophy size={14} className="text-yellow-500"/>
@@ -155,18 +162,16 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
             <div className="flex flex-col gap-2 mt-1">
                 <HealthGauge value={hp} max={maxHp} />
                 <ShieldGauge value={shieldEnergy} max={maxShieldEnergy} />
-                {stats.missileLevel > 0 && (
-                    <MissileGauge value={missileProgress} max={100} />
-                )}
+                <MissileGauge value={missileProgress} />
             </div>
 
-            {/* DPS Indicator */}
-            <div className="mt-1 flex items-center justify-between bg-black/40 border border-gray-800 p-2 rounded">
-                <div className="flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-wider">
-                    <Swords size={12} className="text-yellow-500" />
-                    TOTAL OUTPUT
-                </div>
-                <div className="text-yellow-400 font-mono font-bold text-sm drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
+            {/* Tactical Combat Rating */}
+            <div className="mt-1 flex items-center justify-between border-t border-gray-800/60 pt-2 text-[10px] font-mono">
+                <span className="text-gray-400 flex items-center gap-1">
+                    <Swords size={12} className="text-yellow-400" />
+                    OUTPUT
+                </span>
+                <div className="text-yellow-400 font-bold text-sm drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
                     {currentDps} <span className="text-[9px] text-gray-500 ml-0.5">DPS</span>
                 </div>
             </div>
