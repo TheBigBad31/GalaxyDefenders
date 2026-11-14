@@ -69,6 +69,8 @@ export class GameEngine {
     // Loop & Time
     private animationFrameId: number = 0;
     private lastTime: number = 0;
+    private accumulator: number = 0;
+    private readonly FIXED_DT: number = 1000 / 60;
     private gameTime: number = 0;
     
     // Inputs
@@ -153,8 +155,20 @@ export class GameEngine {
     }
 
     // --- INPUT HANDLERS ---
-    private handleKeyDown = (e: KeyboardEvent) => { this.keys[e.key] = true; };
-    private handleKeyUp = (e: KeyboardEvent) => { this.keys[e.key] = false; };
+    private handleKeyDown = (e: KeyboardEvent) => {
+        if (
+            this.gameState === GameState.PLAYING &&
+            (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space')
+        ) {
+            e.preventDefault();
+        }
+        this.keys[e.code] = true;
+        this.keys[e.key] = true;
+    };
+    private handleKeyUp = (e: KeyboardEvent) => {
+        this.keys[e.code] = false;
+        this.keys[e.key] = false;
+    };
     private handleGamepadConnected = () => { this.callbacks.setGamepadConnected(true); playSound('SHIELD'); };
     private handleGamepadDisconnected = () => {
         const gps = navigator.getGamepads();
@@ -165,6 +179,7 @@ export class GameEngine {
 
     public start() {
         if (!this.animationFrameId) {
+            this.accumulator = 0;
             this.lastTime = performance.now();
             this.loop(this.lastTime);
         }
@@ -253,16 +268,21 @@ export class GameEngine {
     // --- MAIN LOOP ---
 
     private loop = (time: number) => {
-        const dt = time - this.lastTime;
+        const rawDt = time - this.lastTime;
         this.lastTime = time;
+        const dt = Math.min(Math.max(rawDt, 0), 100);
 
-        this.update(dt);
+        this.accumulator += dt;
+        while (this.accumulator >= this.FIXED_DT) {
+            this.updateFixed();
+            this.accumulator -= this.FIXED_DT;
+        }
         this.draw();
 
         this.animationFrameId = requestAnimationFrame(this.loop);
     };
 
-    private update(dt: number) {
+    private updateFixed() {
         this.gameTime++;
         const input = getInputState(this.keys, this.prevGamepadState, this.callbacks.setGamepadConnected, this.lastGamepadConnected);
         
