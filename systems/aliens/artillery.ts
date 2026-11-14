@@ -2,10 +2,16 @@
 import { AlienUpdateContext } from './types';
 import { Alien, AlienType } from '../../types';
 import { COLORS, ALIEN_CONFIGS } from '../../constants';
+import { checkBossPhaseTransition, triggerBossPhase2Effects } from './bossPhase';
 
 export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
-    const { player, bullets, gameTime, createExplosion } = ctx;
+    const { player, bullets, gameTime, createExplosion, playSound } = ctx;
     const isSupreme = alien.type === AlienType.SUPREME_ARTILLERY;
+
+    if (isSupreme && checkBossPhaseTransition(alien)) {
+        triggerBossPhase2Effects(alien, createExplosion, playSound, ctx.onBossPhase2);
+    }
+    const isPhase2 = isSupreme && alien.bossPhase === 2;
 
     // Movement: Hover & Sine
     alien.pos.y = Math.min(isSupreme ? 80 : 100, alien.pos.y + alien.vy); 
@@ -47,7 +53,7 @@ export const updateArtillery = (alien: Alien, ctx: AlienUpdateContext) => {
                 alien.burstRemaining = (alien.burstRemaining || 0) - 1;
                 // Increased interval between fan waves from 60 (1s) to 90 (1.5s) for Boss
                 // This makes the wall less dense and gives time to weave
-                alien.burstTimer = 90; 
+                alien.burstTimer = isPhase2 ? 60 : 90;
             } else {
                 // NORMAL ATTACK: Dual Destructible Stream
                 const angles = [angle - 0.15, angle + 0.15];

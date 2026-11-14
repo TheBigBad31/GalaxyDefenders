@@ -39,6 +39,7 @@ const handleEnemyBullet = (bullet: any, ctx: CollisionContext) => {
                 setHp(player.hp);
             }
             createExplosion(bullet.pos.x, bullet.pos.y, '#4ade80', 'SMALL');
+            ctx.onDeflect?.();
             return; 
         }
     }
@@ -74,6 +75,8 @@ const handlePlayerBullet = (bullet: any, ctx: CollisionContext) => {
             else if (bullet.variant === 'PLAYER_FLAME') {
                 bullet.active = false;
                 alien.hp -= bullet.damage || 0.25;
+                alien.burnTimer = 90;
+                alien.burnDamage = 0.04;
                 createExplosion(bullet.pos.x, bullet.pos.y, COLORS.powerupFlame, 'SMALL');
                 if (alien.hp <= 0) handleAlienHit(alien);
             }

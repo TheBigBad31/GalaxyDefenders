@@ -10,4 +10,5 @@ export interface AlienUpdateContext {
   particles: Particle[]; // Pour les effets visuels
   playSound: (type: SoundType) => void;
   createExplosion: (x: number, y: number, color: string, intensity: 'SMALL' | 'MEDIUM' | 'LARGE' | 'MASSIVE') => void;
+  onBossPhase2?: () => void;
 }

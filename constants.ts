@@ -8,7 +8,7 @@ export const CANVAS_HEIGHT = 600;
 // --- CENTRALIZED BALANCING CONFIGURATION ---
 
 export const PLAYER_BALANCE = {
-    SPEED: 1.5,
+    SPEED: 3.2,
     MAX_HP: 500,
     INITIAL_SHIELD: 100,
     HITBOX: {
@@ -31,7 +31,7 @@ export const WEAPON_BALANCE = {
         DAMAGE: 1.5,
         SPEED: 5.5,
         // Cooldowns per level: [Lvl 0, Lvl 1, ..., Lvl 5, Max]
-        COOLDOWNS: [28, 14, 19, 14, 17, 14, 20] 
+        COOLDOWNS: [24, 20, 17, 15, 13, 11, 9]
     },
     // SPREAD (Crowd Control)
     SPREAD: {

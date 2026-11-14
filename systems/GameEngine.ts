@@ -13,6 +13,7 @@ import {
 import { PALETTES } from '../constants/palettes';
 import { generateAllSprites } from '../utils/graphics';
 import { createPowerUp, spawnWaveEnemies } from './spawning';
+import { ComboState, createComboState, registerComboKill, registerComboDeflect, registerComboHit, updateCombo, calculateComboScore } from './combo';
 import { drawGame } from './renderer';
 import { playSound } from '../services/audioService';
 import { updateAlien } from './aliens/manager';
@@ -33,6 +34,7 @@ export interface GameCallbacks {
     onCollectPowerUp: (x: number, y: number, type: PowerUpType, color: string) => void;
     setMissileProgress: (progress: number) => void;
     setBossStatus: (status: BossStatus) => void;
+    setCombo?: (combo: { count: number; multiplier: number; timerRatio: number }) => void;
     onGameOver: (reason: string) => void;
 }
 
@@ -45,6 +47,7 @@ export class GameEngine {
     public gameState: GameState = GameState.MENU;
     public score: number = 0;
     public level: number = 1;
+    public comboState: ComboState = createComboState();
     
     // Entities
     public player: Player;
@@ -188,7 +191,7 @@ export class GameEngine {
             width: w, 
             height: h, 
             color: PALETTES[selectedShip.paletteKey as keyof typeof PALETTES]?.['3'] || '#0ea5e9',
-            active: true, velocity: 0,
+            active: true, velocity: PLAYER_BALANCE.SPEED * (selectedShip.speedMultiplier ?? 1),
             beamTimer: 0, spreadTimer: 0, flameTimer: 0, sidewinderTimer: 0,
             beamLevel: 0, spreadLevel: 0, flameLevel: 0, sidewinderLevel: 0, missileLevel: 0,
             missileCooldown: 0, missileSequenceActive: false, missileWaveStep: 0, missileWaveTimer: 0,
@@ -207,6 +210,8 @@ export class GameEngine {
         this.waveTimer = 60;
         this.score = 0;
         this.gameTime = 0;
+        this.comboState = createComboState();
+        this.notifyCombo();
         
         // Reset Entities
         this.aliens = [];
@@ -333,8 +338,9 @@ export class GameEngine {
 
     private updatePlayer(input: InputState) {
         const player = this.player;
-        player.pos.x += input.dx * PLAYER_BALANCE.SPEED;
-        player.pos.y += input.dy * PLAYER_BALANCE.SPEED;
+        const speed = player.velocity || PLAYER_BALANCE.SPEED;
+        player.pos.x += input.dx * speed;
+        player.pos.y += input.dy * speed;
         player.pos.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.pos.x));
         player.pos.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.pos.y));
 
@@ -539,7 +545,8 @@ export class GameEngine {
                      this.bullets.push({
                          id: Math.random().toString(), pos: { x: vx > 0 ? player.pos.x + player.width : player.pos.x, y: player.pos.y + player.height/2 },
                          width: 8, height: 8, color: COLORS.powerupSidewinder, active: true,
-                         velocity: vy, vx: vx, isEnemy: false, variant: 'PLAYER_SIDEWINDER', damage: conf.DAMAGE
+                         velocity: vy, vx: vx, isEnemy: false, variant: 'PLAYER_SIDEWINDER', damage: conf.DAMAGE,
+                         homingStrength: player.sidewinderLevel >= 3 ? 1.5 : 0
                      });
                  };
                  
@@ -620,11 +627,20 @@ export class GameEngine {
         // Aliens
         this.aliens.forEach(alien => {
             if (!alien.active) return;
+            if (alien.burnTimer && alien.burnTimer > 0) {
+                alien.burnTimer -= 1;
+                alien.hp -= alien.burnDamage || 0.04;
+                if (alien.hp <= 0) {
+                    this.handleAlienHit(alien);
+                    return;
+                }
+            }
             updateAlien(alien, {
                 gameTime: this.gameTime, currentLevel: this.level,
                 player: this.player, aliens: this.aliens,
                 bullets: this.bullets, particles: this.particles,
-                playSound, createExplosion: this.createExplosion.bind(this)
+                playSound, createExplosion: this.createExplosion.bind(this),
+                onBossPhase2: () => { this.callbacks.setTaunt('⚠️ PHASE 2 ENGAGED!'); }
             });
             const isBoss = [AlienType.BOSS, AlienType.SUPREME_MOTHERSHIP, AlienType.SUPREME_ARTILLERY].includes(alien.type);
             const isOffScreen = alien.pos.y > CANVAS_HEIGHT + 200 || alien.pos.y < -300;
@@ -634,8 +650,16 @@ export class GameEngine {
 
         // Bullets
         this.bullets.forEach(bullet => {
-            updateBullet({ bullet, gameTime: this.gameTime, particles: this.particles, playSound, player: this.player });
+            updateBullet({ bullet, gameTime: this.gameTime, particles: this.particles, playSound, player: this.player, aliens: this.aliens });
         });
+
+        // Combo decay
+        if (this.comboState.count > 0) {
+            updateCombo(this.comboState, 1);
+            if (this.gameTime % 6 === 0 || this.comboState.count === 0) {
+                this.notifyCombo();
+            }
+        }
 
         // Particles
         this.particles.forEach(p => {
@@ -682,6 +706,7 @@ export class GameEngine {
             handleGameOver: this.handleGameOver.bind(this),
             handleAlienHit: this.handleAlienHit.bind(this),
             handlePlayerHit: this.handlePlayerHit.bind(this),
+            onDeflect: () => { registerComboDeflect(this.comboState); this.notifyCombo(); },
             onCollectPowerUp: this.callbacks.onCollectPowerUp,
             updateStats: this.updatePlayerStatsUI.bind(this),
             bossActiveRef: { current: this.bossActive },
@@ -738,6 +763,14 @@ export class GameEngine {
         });
     }
 
+    private notifyCombo() {
+        this.callbacks.setCombo?.({
+            count: this.comboState.count,
+            multiplier: this.comboState.multiplier,
+            timerRatio: this.comboState.maxTimer > 0 ? this.comboState.timer / this.comboState.maxTimer : 0,
+        });
+    }
+
     private handleAlienHit(alien: Alien) {
         alien.hp -= 1;
         let explosionColor = alien.color;
@@ -746,8 +779,10 @@ export class GameEngine {
 
         if (alien.hp <= 0) {
             alien.active = false;
-            this.score += alien.scoreValue;
+            registerComboKill(this.comboState);
+            this.score += calculateComboScore(alien.scoreValue, this.comboState);
             this.callbacks.setScore(this.score);
+            this.notifyCombo();
             this.createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, explosionColor, 'LARGE');
             playSound('EXPLOSION'); 
             
@@ -782,6 +817,8 @@ export class GameEngine {
     private handlePlayerHit(sourceVariant: string) {
         const damage = DAMAGE_VALUES[sourceVariant] || DAMAGE_VALUES['DEFAULT_COLLISION'];
         this.player.hp -= damage;
+        registerComboHit(this.comboState);
+        this.notifyCombo();
         this.callbacks.setHp(this.player.hp);
         playSound('PLAYER_HIT');
         this.createExplosion(this.player.pos.x + this.player.width/2, this.player.pos.y + this.player.height/2, '#f43f5e', 'LARGE');

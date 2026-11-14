@@ -17,11 +17,12 @@ interface SidePanelProps {
     onCheat: () => void;
     onToggleVolume: () => void;
     user?: UserProfile;
+    combo?: { count: number; multiplier: number; timerRatio: number };
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
     playerStats, score, level, hp, maxHp, shieldEnergy, missileProgress,
-    volumeLevel, onCheat, onToggleVolume, user
+    volumeLevel, onCheat, onToggleVolume, user, combo
 }) => {
     const currentUser = user || authService.getCurrentUser();
     
@@ -41,6 +42,23 @@ export const SidePanel: React.FC<SidePanelProps> = ({
             </div>
 
             {/* Main HUD Component */}
+            {combo && combo.count > 0 && (
+                <div className="px-3 py-1.5 bg-gray-950/90 border-b border-cyan-900/50">
+                    <div className="flex items-center justify-between text-xs font-mono mb-1">
+                        <span className="text-amber-400 font-bold tracking-wider">COMBO {combo.count}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-300 font-black">
+                            x{combo.multiplier}
+                        </span>
+                    </div>
+                    <div className="w-full h-1 bg-gray-800 rounded overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-75"
+                            style={{ width: `${Math.max(0, Math.min(100, combo.timerRatio * 100))}%` }}
+                        />
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 overflow-hidden">
                 <ShipBlueprint 
                     stats={playerStats} 

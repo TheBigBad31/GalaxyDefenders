@@ -20,6 +20,7 @@ interface GameCanvasProps {
   onCollectPowerUp: (x: number, y: number, type: PowerUpType, color: string) => void;
   setMissileProgress: (progress: number) => void;
   setBossStatus: (status: BossStatus) => void;
+  setCombo?: (combo: { count: number; multiplier: number; timerRatio: number }) => void;
   selectedShip: ShipConfig;
 }
 
@@ -31,7 +32,7 @@ export interface GameCanvasRef {
 const GameCanvas = forwardRef<GameCanvasRef, GameCanvasProps>(({ 
   gameState, setGameState, setScore, setTaunt, setLevel, setHp, setMaxHp,
   setGamepadConnected, setShieldEnergy, setPlayerStats, onCollectPowerUp, setMissileProgress,
-  setBossStatus, selectedShip
+  setBossStatus, setCombo, selectedShip
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
@@ -64,6 +65,7 @@ const GameCanvas = forwardRef<GameCanvasRef, GameCanvasProps>(({
         onCollectPowerUp,
         setMissileProgress,
         setBossStatus,
+        setCombo,
         onGameOver: async (reason: string) => {
              setGameState(GameState.GAME_OVER);
              setTaunt("Game Over. Try again!");

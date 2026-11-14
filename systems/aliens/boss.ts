@@ -3,8 +3,10 @@ import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
 import { COLORS } from '../../constants';
 import { AlienEntity } from './entity';
+import { checkBossPhaseTransition, triggerBossPhase2Effects } from './bossPhase';
 
 export class BossAlien extends AlienEntity {
+    bossPhase?: 1 | 2;
     constructor(props: Alien) {
         super(props);
         // Init boss specifics if needed
@@ -18,13 +20,18 @@ export class BossAlien extends AlienEntity {
     }
 
     update(ctx: AlienUpdateContext) {
-        const { player, gameTime, bullets, playSound } = ctx;
+        const { player, gameTime, bullets, playSound, createExplosion } = ctx;
+
+        if (checkBossPhaseTransition(this)) {
+            triggerBossPhase2Effects(this, createExplosion, playSound, ctx.onBossPhase2);
+        }
+        const isPhase2 = this.bossPhase === 2;
 
         // 1. Movement: Tracking with inertia
         const targetX = player.pos.x + player.width / 2 - this.width / 2;
         const dx = targetX - this.pos.x;
-        let vx = dx * 0.02; // Smooth tracking
-        const maxSpeed = 1.2;
+        let vx = dx * (isPhase2 ? 0.03 : 0.02); // Smooth tracking
+        const maxSpeed = isPhase2 ? 1.8 : 1.2;
         if (vx > maxSpeed) vx = maxSpeed;
         if (vx < -maxSpeed) vx = -maxSpeed;
         this.pos.x += vx;
@@ -39,7 +46,8 @@ export class BossAlien extends AlienEntity {
             this.gatlingTimer = this.isGatlingFiring ? 180 : 120;
         }
 
-        if (this.isGatlingFiring && gameTime % 12 === 0) { 
+        const gatlingInterval = isPhase2 ? 9 : 12;
+        if (this.isGatlingFiring && gameTime % gatlingInterval === 0) { 
             const gunOffsets = [10, 40, this.width - 40, this.width - 10]; // 4 distinct cannons
             gunOffsets.forEach(offset => {
                 bullets.push({
@@ -58,15 +66,15 @@ export class BossAlien extends AlienEntity {
             if (gameTime % 24 === 0) playSound('SHOOT');
         }
 
-        // 3. Attack: SPIRAL (Continuous Double Stream)
-        this.spiralAngle! += 0.05; // Rotate angle
+        // 3. Attack: SPIRAL (Continuous Double Stream, Triple in Phase 2)
+        this.spiralAngle! += isPhase2 ? 0.07 : 0.05; // Rotate angle
         if (gameTime % 4 === 0) { // Fast emission for dense wall
             const centerX = this.pos.x + this.width / 2;
             const centerY = this.pos.y + this.height / 2;
-            const speed = 3.0;
-            // Emit 2 bullets opposite to each other
-            for(let i=0; i<2; i++) {
-                const angle = this.spiralAngle! + (Math.PI * i);
+            const speed = isPhase2 ? 3.5 : 3.0;
+            const arms = isPhase2 ? 3 : 2;
+            for(let i=0; i<arms; i++) {
+                const angle = this.spiralAngle! + ((Math.PI * 2 / arms) * i);
                 bullets.push({
                     id: `boss-spiral-${Math.random()}`,
                     pos: { x: centerX, y: centerY },

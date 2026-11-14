@@ -69,6 +69,7 @@ export interface ShipConfig {
     baseStats: Partial<Player>;
     scale?: number; // 1 is default
     magnetRadius?: number; // 0 is default
+    speedMultiplier?: number; // 1 is default
 }
 
 export interface Position {
@@ -165,6 +166,11 @@ export interface Alien extends Entity {
   // UFO specific
   ufoState?: 'PATROL' | 'CHARGE' | 'BEAM';
   beamTimer?: number;
+
+  // Boss phase & status effects
+  bossPhase?: 1 | 2;
+  burnTimer?: number;
+  burnDamage?: number;
 }
 
 export type BulletVariant = 'PLAYER_BEAM' | 'PLAYER_SPREAD' | 'PLAYER_MISSILE' | 'PLAYER_FLAME' | 'PLAYER_SIDEWINDER' | 'ENEMY_NORMAL' | 'ENEMY_FAST' | 'ENEMY_HEAVY' | 'BOSS' | 'ENEMY_SNIPER' | 'ENEMY_DESTRUCTIBLE' | 'ENEMY_HOMING' | 'ENEMY_GALAXY' | 'ENEMY_POD' | 'UFO_BEAM';
@@ -182,6 +188,7 @@ export interface Bullet extends Entity {
   missileSize?: MissileSize; // Added size property
   life?: number;
   damage?: number; // Added damage property
+  homingStrength?: number; // For Sidewinder Lv3+
 }
 
 export interface PowerUp extends Entity {

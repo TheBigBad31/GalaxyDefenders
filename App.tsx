@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const [flyingPowerUps, setFlyingPowerUps] = useState<FlyingPowerUp[]>([]);
   const [selectedShip, setSelectedShip] = useState<ShipConfig>(SHIPS[0]);
   const [bossStatus, setBossStatus] = useState<BossStatus>({ active: false, name: '', hp: 0, maxHp: 1, color: '' });
+  const [combo, setCombo] = useState<{ count: number; multiplier: number; timerRatio: number }>({ count: 0, multiplier: 1, timerRatio: 0 });
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => authService.getCurrentUser());
   
   const gameCanvasRef = useRef<GameCanvasRef>(null);
@@ -154,6 +155,7 @@ const App: React.FC = () => {
                     onCollectPowerUp={handlePowerUpCollection}
                     setMissileProgress={setMissileProgress}
                     setBossStatus={setBossStatus}
+                    setCombo={setCombo}
                     selectedShip={selectedShip}
                 />
 
@@ -194,6 +196,7 @@ const App: React.FC = () => {
         <SidePanel 
             playerStats={playerStats}
             score={score}
+            combo={combo}
             level={level}
             hp={hp}
             maxHp={maxHp}

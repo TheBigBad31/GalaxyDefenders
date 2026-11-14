@@ -14,6 +14,24 @@ export const updatePlayerBullet = (ctx: BulletUpdateContext) => {
     else if (bullet.variant === 'PLAYER_SIDEWINDER') {
         bullet.pos.y += bullet.velocity; 
         bullet.pos.x += bullet.vx;
+        if (bullet.homingStrength && ctx.aliens && ctx.aliens.length > 0) {
+            let nearestX: number | null = null;
+            let bestDistSq = Infinity;
+            for (const alien of ctx.aliens) {
+                if (!alien.active || alien.pos.y > bullet.pos.y) continue;
+                const dx = (alien.pos.x + alien.width / 2) - bullet.pos.x;
+                const dy = (alien.pos.y + alien.height / 2) - bullet.pos.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 < bestDistSq) {
+                    bestDistSq = d2;
+                    nearestX = alien.pos.x + alien.width / 2;
+                }
+            }
+            if (nearestX !== null) {
+                const dx = nearestX - bullet.pos.x;
+                bullet.pos.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.08, bullet.homingStrength);
+            }
+        }
         bullet.width = 8 + Math.sin(gameTime * 0.5) * 4; 
     }
     else {

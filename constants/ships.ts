@@ -13,7 +13,8 @@ export const SHIPS: ShipConfig[] = [
         paletteKey: 'PLAYER_MATTEWS',
         baseStats: {
             missileLevel: 1
-        }
+        },
+        speedMultiplier: 1.0
     },
     {
         id: 'TOPHE',
@@ -25,7 +26,8 @@ export const SHIPS: ShipConfig[] = [
         baseStats: {
             maxShieldEnergy: SHIELD_MAX_ENERGY * 2,
             shieldRegenRate: 0.05 // Double default
-        }
+        },
+        speedMultiplier: 0.95
     },
     {
         id: 'BOLTON',
@@ -36,7 +38,8 @@ export const SHIPS: ShipConfig[] = [
         paletteKey: 'PLAYER_BOLTON',
         baseStats: {
             flameLevel: 1
-        }
+        },
+        speedMultiplier: 1.05
     },
     {
         id: 'JEFF',
@@ -47,7 +50,8 @@ export const SHIPS: ShipConfig[] = [
         paletteKey: 'PLAYER_JEFF',
         baseStats: {
             sidewinderLevel: 1
-        }
+        },
+        speedMultiplier: 1.2
     },
     {
         id: 'MICKA',
@@ -57,10 +61,12 @@ export const SHIPS: ShipConfig[] = [
         color: 'text-gray-400',
         paletteKey: 'PLAYER_MICKA',
         baseStats: {
-            // No weapon bonus
+            hp: 800,
+            maxHp: 800
         },
         scale: 2.0, // 2x width/height = 4x area
-        magnetRadius: 1200 // Effectively Full Screen
+        magnetRadius: 1200, // Effectively Full Screen
+        speedMultiplier: 0.85
     },
     {
         id: 'BALI',
@@ -75,6 +81,7 @@ export const SHIPS: ShipConfig[] = [
             missileLevel: 1,
             flameLevel: 1,
             sidewinderLevel: 1
-        }
+        },
+        speedMultiplier: 1.1
     }
 ];

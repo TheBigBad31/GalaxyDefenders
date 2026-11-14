@@ -1,5 +1,5 @@
 
-import { Bullet, Particle, Player, SoundType } from '../../types';
+import { Alien, Bullet, Particle, Player, SoundType } from '../../types';
 
 export interface BulletUpdateContext {
     bullet: Bullet;
@@ -7,4 +7,5 @@ export interface BulletUpdateContext {
     particles: Particle[];
     playSound: (type: SoundType) => void;
     player: Player;
+    aliens?: Alien[];
 }

@@ -3,10 +3,16 @@ import { AlienUpdateContext } from './types';
 import { Alien, AlienType } from '../../types';
 import { spawnKamikaze } from '../spawning/factories';
 import { COLORS } from '../../constants';
+import { checkBossPhaseTransition, triggerBossPhase2Effects } from './bossPhase';
 
 export const updateMothership = (alien: Alien, ctx: AlienUpdateContext) => {
     const { gameTime, aliens, bullets, playSound, player, createExplosion } = ctx;
     const isSupreme = alien.type === AlienType.SUPREME_MOTHERSHIP;
+
+    if (isSupreme && checkBossPhaseTransition(alien)) {
+        triggerBossPhase2Effects(alien, createExplosion, playSound, ctx.onBossPhase2);
+    }
+    const isPhase2 = isSupreme && alien.bossPhase === 2;
 
     // Movement: Slow sine wave
     alien.pos.y = Math.min(60, alien.pos.y + alien.vy); 
@@ -22,7 +28,7 @@ export const updateMothership = (alien: Alien, ctx: AlienUpdateContext) => {
                 aliens.push(spawnKamikaze(alien.pos.x + 30, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
                 aliens.push(spawnKamikaze(alien.pos.x + alien.width - 30, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
                 aliens.push(spawnKamikaze(alien.pos.x + alien.width - 20, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
-                alien.spawnTimer = 180; // 3 seconds interval
+                alien.spawnTimer = isPhase2 ? 120 : 180; // Faster spawn in Phase 2
             } else {
                 // DUAL SPAWN
                 aliens.push(spawnKamikaze(alien.pos.x, alien.pos.y + alien.height/2, alien.squadId || 'ms', alien.id));
@@ -35,7 +41,8 @@ export const updateMothership = (alien: Alien, ctx: AlienUpdateContext) => {
 
     // SUPREME SPECIAL: Homing Missiles
     // Modified to be less frequent (every 7s), larger, slower (easier to shield), but visually imposing
-    if (isSupreme && gameTime % 420 === 0) { 
+    const missileInterval = isPhase2 ? 260 : 420;
+    if (isSupreme && gameTime % missileInterval === 0) {
         const pCx = player.pos.x + player.width / 2;
         const pCy = player.pos.y + player.height / 2;
         const dx = pCx - (alien.pos.x + alien.width / 2);
