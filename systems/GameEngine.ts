@@ -61,6 +61,8 @@ export class GameEngine {
     private grid: SpatialGrid;
     private bossActive: boolean = false;
     private lastBossHp: number = -1;
+    private shakeIntensity: number = 0;
+    private readonly shakeDecay: number = 0.88;
     
     // Wave Management
     private wave: number = 0;
@@ -281,6 +283,26 @@ export class GameEngine {
         this.updateWaveLogic();
         this.updateShooting(input);
         this.updateEntities();
+        this.aliens.forEach(alien => {
+            if (alien.hitFlashTimer && alien.hitFlashTimer > 0) alien.hitFlashTimer--;
+            if (alien.active && alien.maxHp > 1 && alien.hp / alien.maxHp < 0.4 && this.gameTime % 6 === 0) {
+                this.particles.push({
+                    id: 'dmg-' + Math.random(),
+                    pos: { x: alien.pos.x + Math.random() * alien.width, y: alien.pos.y + Math.random() * alien.height },
+                    velocity: { x: (Math.random() - 0.5) * 1.5, y: -Math.random() * 1.2 - 0.3 },
+                    life: 0.7,
+                    decay: 0.03,
+                    color: Math.random() > 0.5 ? '#fb923c' : '#94a3b8',
+                    size: Math.random() * 3 + 2,
+                    type: Math.random() > 0.5 ? 'SPARK' : 'SMOKE'
+                });
+            }
+        });
+        if (this.shakeIntensity > 0.2) {
+            this.shakeIntensity *= this.shakeDecay;
+        } else {
+            this.shakeIntensity = 0;
+        }
         this.updateCollisions();
         this.cleanupEntities();
     }
@@ -300,7 +322,8 @@ export class GameEngine {
             bossActive: this.bossActive,
             gameTime: this.gameTime,
             level: this.level,
-            state: this.gameState
+            state: this.gameState,
+            shakeIntensity: this.shakeIntensity
         }, this.spriteCache);
     }
 
@@ -418,9 +441,12 @@ export class GameEngine {
             if (neb.y > CANVAS_HEIGHT + neb.size) { neb.y = -neb.size; neb.x = Math.random() * CANVAS_WIDTH; }
         });
         if (this.gameTime % 3 === 0 && this.player.active) {
+            const thrusterColor = this.player.shipId === 'TOPHE' ? '#06b6d4'
+                : (this.player.shipId === 'JEFF' ? '#a855f7'
+                : (this.player.shipId === 'BOLTON' ? '#f97316' : '#ef4444'));
             this.particles.push({
                 id: 'trail-' + Math.random(), pos: { x: this.player.pos.x + this.player.width / 2 - 2, y: this.player.pos.y + this.player.height },
-                velocity: { x: (Math.random() - 0.5), y: Math.random() * 2 + 2 }, life: 0.8, color: PALETTES.PLAYER['4'], size: Math.random() * 3 + 2
+                velocity: { x: (Math.random() - 0.5), y: Math.random() * 2 + 2 }, life: 0.8, color: thrusterColor, size: Math.random() * 3 + 2
             });
         }
     }
@@ -440,6 +466,17 @@ export class GameEngine {
                     if (hasBoss) {
                         this.bossActive = true;
                         this.createExplosion(CANVAS_WIDTH/2, 100, '#ff0000', 'MASSIVE');
+                        this.particles.push({
+                            id: 'banner-boss-' + Date.now(),
+                            pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT * 0.32 },
+                            velocity: { x: 0, y: -0.3 },
+                            life: 1.5,
+                            decay: 0.01,
+                            color: '#ef4444',
+                            size: 22,
+                            type: 'TEXT',
+                            text: 'WARNING: BOSS'
+                        });
                         playSound('BOSS_SPAWN'); 
                     }
 
@@ -447,10 +484,22 @@ export class GameEngine {
                     this.waveTimer = Math.max(WAVE_CONFIG.minInterval, WAVE_CONFIG.baseInterval - levelMod);
                 }
             } else if (this.aliens.length === 0) {
+                 const clearedSector = this.level;
                  this.level += 1;
                  this.wave = 0; 
                  this.callbacks.setLevel(this.level);
                  this.createExplosion(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, '#00ffff', 'MASSIVE');
+                 this.particles.push({
+                     id: 'banner-sector-' + Date.now(),
+                     pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT * 0.35 },
+                     velocity: { x: 0, y: -0.4 },
+                     life: 1.5,
+                     decay: 0.01,
+                     color: '#38bdf8',
+                     size: 22,
+                     type: 'TEXT',
+                     text: `SECTOR ${clearedSector} CLEAR!`
+                 });
                  this.score += DIFFICULTY_SCALE.levelBonus * this.level;
                  this.callbacks.setScore(this.score);
                  this.waveTimer = 180; 
@@ -729,6 +778,8 @@ export class GameEngine {
     private triggerMissileBlast(x: number, y: number, size: MissileSize = 'SMALL') {
         const stats = WEAPON_BALANCE.MISSILE.STATS[size];
         this.createExplosion(x, y, '#ff4400', size === 'LARGE' ? 'MASSIVE' : (size === 'MEDIUM' ? 'LARGE' : 'MEDIUM')); 
+        if (size === 'LARGE') this.shakeIntensity = Math.max(this.shakeIntensity, 9);
+        else if (size === 'MEDIUM') this.shakeIntensity = Math.max(this.shakeIntensity, 4);
         playSound('EXPLOSION');
         this.blastZones.push({
             id: `blast-${Date.now()}-${Math.random()}`, x: x, y: y,
@@ -740,6 +791,7 @@ export class GameEngine {
 
     private handleAlienHit(alien: Alien) {
         alien.hp -= 1;
+        alien.hitFlashTimer = 6;
         let explosionColor = alien.color;
         if ((PALETTES as any)[alien.type]) explosionColor = (PALETTES as any)[alien.type]['1'];
         this.createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, explosionColor, 'SMALL');
@@ -749,10 +801,24 @@ export class GameEngine {
             this.score += alien.scoreValue;
             this.callbacks.setScore(this.score);
             this.createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, explosionColor, 'LARGE');
+            if (alien.scoreValue >= 300) {
+                this.particles.push({
+                    id: 'score-' + Math.random(),
+                    pos: { x: alien.pos.x + alien.width / 2, y: alien.pos.y + alien.height / 2 },
+                    velocity: { x: 0, y: -1.2 },
+                    life: 1.0,
+                    decay: 0.015,
+                    color: '#fde047',
+                    size: 13,
+                    type: 'TEXT',
+                    text: `+${alien.scoreValue}`
+                });
+            }
             playSound('EXPLOSION'); 
             
             const bossTypes = [AlienType.BOSS, AlienType.SUPREME_MOTHERSHIP, AlienType.SUPREME_ARTILLERY];
             if (bossTypes.includes(alien.type)) {
+                this.shakeIntensity = Math.max(this.shakeIntensity, 18);
                 this.bossActive = false;
                 this.callbacks.setBossStatus({ active: false, name: '', hp: 0, maxHp: 1, color: '' });
                 this.aliens.forEach(other => {
@@ -784,6 +850,7 @@ export class GameEngine {
         this.player.hp -= damage;
         this.callbacks.setHp(this.player.hp);
         playSound('PLAYER_HIT');
+        this.shakeIntensity = Math.max(this.shakeIntensity, this.player.hp <= 0 ? 16 : 10);
         this.createExplosion(this.player.pos.x + this.player.width/2, this.player.pos.y + this.player.height/2, '#f43f5e', 'LARGE');
         if (this.player.hp <= 0) {
             this.createExplosion(this.player.pos.x + this.player.width/2, this.player.pos.y + this.player.height/2, '#f43f5e', 'MASSIVE');

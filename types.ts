@@ -165,6 +165,7 @@ export interface Alien extends Entity {
   // UFO specific
   ufoState?: 'PATROL' | 'CHARGE' | 'BEAM';
   beamTimer?: number;
+  hitFlashTimer?: number;
 }
 
 export type BulletVariant = 'PLAYER_BEAM' | 'PLAYER_SPREAD' | 'PLAYER_MISSILE' | 'PLAYER_FLAME' | 'PLAYER_SIDEWINDER' | 'ENEMY_NORMAL' | 'ENEMY_FAST' | 'ENEMY_HEAVY' | 'BOSS' | 'ENEMY_SNIPER' | 'ENEMY_DESTRUCTIBLE' | 'ENEMY_HOMING' | 'ENEMY_GALAXY' | 'ENEMY_POD' | 'UFO_BEAM';

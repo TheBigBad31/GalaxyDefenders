@@ -116,6 +116,36 @@ const renderBlastZones = (ctx: CanvasRenderingContext2D, blastZones: BlastZone[]
     });
 };
 
+const getShipThrusterColor = (shipId: string): string => {
+    switch (shipId) {
+        case 'TOPHE': return '#06b6d4';
+        case 'JEFF': return '#a855f7';
+        case 'BOLTON': return '#f97316';
+        default: return '#ef4444';
+    }
+};
+
+let hitFlashCanvas: HTMLCanvasElement | null = null;
+let hitFlashCtx: CanvasRenderingContext2D | null = null;
+
+const getHitFlashCanvas = (width: number, height: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null => {
+    if (typeof document === 'undefined') return null;
+    if (!hitFlashCanvas) {
+        hitFlashCanvas = document.createElement('canvas');
+        hitFlashCtx = hitFlashCanvas.getContext('2d');
+    }
+    if (!hitFlashCtx) return null;
+    const w = Math.max(1, Math.ceil(width));
+    const h = Math.max(1, Math.ceil(height));
+    if (hitFlashCanvas.width !== w || hitFlashCanvas.height !== h) {
+        hitFlashCanvas.width = w;
+        hitFlashCanvas.height = h;
+    } else {
+        hitFlashCtx.clearRect(0, 0, w, h);
+    }
+    return { canvas: hitFlashCanvas, ctx: hitFlashCtx };
+};
+
 const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number, player: Player, cache: Record<string, HTMLCanvasElement>) => {
     let jitterX = 0;
     let jitterY = 0;
@@ -130,6 +160,21 @@ const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number
         if (dist < 120) { 
              jitterX = (Math.random() - 0.5) * 6;
              jitterY = (Math.random() - 0.5) * 6;
+             // Electric deflection arc toward shield perimeter
+             ctx.save();
+             ctx.strokeStyle = Math.random() > 0.4 ? '#22d3ee' : '#ffffff';
+             ctx.lineWidth = 1.5;
+             ctx.globalAlpha = 0.75;
+             ctx.beginPath();
+             ctx.moveTo(cx, cy);
+             const midX = (cx + pcx) * 0.5 + (Math.random() - 0.5) * 14;
+             const midY = (cy + pcy) * 0.5 + (Math.random() - 0.5) * 14;
+             ctx.lineTo(midX, midY);
+             const angle = Math.atan2(cy - pcy, cx - pcx);
+             const shieldR = (player.width / 2) * 1.6;
+             ctx.lineTo(pcx + Math.cos(angle) * shieldR, pcy + Math.sin(angle) * shieldR);
+             ctx.stroke();
+             ctx.restore();
         }
     }
 
@@ -297,13 +342,14 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, player: Player, gameTime: n
     // Glowing Thruster Flames under ship
     ctx.save();
     const flameHeight = 10 + Math.random() * 8;
+    const thrusterColor = getShipThrusterColor(player.shipId);
     const flameGrad = ctx.createLinearGradient(cx, player.pos.y + player.height, cx, player.pos.y + player.height + flameHeight);
     flameGrad.addColorStop(0, '#ffffff');
-    flameGrad.addColorStop(0.4, player.shipId === 'TOPHE' ? '#06b6d4' : (player.shipId === 'JEFF' ? '#a855f7' : (player.shipId === 'BOLTON' ? '#f97316' : '#ef4444')));
+    flameGrad.addColorStop(0.4, thrusterColor);
     flameGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = flameGrad;
     ctx.shadowBlur = 12;
-    ctx.shadowColor = flameGrad.addColorStop ? '#38bdf8' : '#ef4444';
+    ctx.shadowColor = thrusterColor;
     ctx.fillRect(cx - 5, player.pos.y + player.height - 2, 10, flameHeight);
     ctx.restore();
 
@@ -455,13 +501,45 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
     }
 
     const hdEnemy = HD_ENEMIES[alien.type.toString()];
+    const isHitFlashing = (alien.hitFlashTimer ?? 0) > 0;
     if (hdEnemy && hdEnemy.complete && hdEnemy.naturalWidth > 0) {
         const transparentCanvas = getTransparentImageCanvas(alien.type.toString(), hdEnemy);
+        const sourceImg = transparentCanvas || hdEnemy;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(transparentCanvas || hdEnemy, alien.pos.x, alien.pos.y, alien.width, alien.height);
+        ctx.drawImage(sourceImg, alien.pos.x, alien.pos.y, alien.width, alien.height);
+        if (isHitFlashing) {
+            const flash = getHitFlashCanvas(alien.width, alien.height);
+            if (flash) {
+                flash.ctx.globalCompositeOperation = 'source-over';
+                flash.ctx.drawImage(sourceImg, 0, 0, alien.width, alien.height);
+                flash.ctx.globalCompositeOperation = 'source-atop';
+                flash.ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                flash.ctx.fillRect(0, 0, alien.width, alien.height);
+                flash.ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(flash.canvas, alien.pos.x, alien.pos.y, alien.width, alien.height);
+            }
+        }
     } else {
         drawCachedSprite(ctx, cache, spriteKey, alien.pos.x, alien.pos.y, alien.width, alien.height);
+        if (isHitFlashing) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fillRect(alien.pos.x, alien.pos.y, alien.width, alien.height);
+        }
+    }
+
+    // Local HP bar for heavy units
+    const heavyTypes = [AlienType.ELITE, AlienType.GUNNER, AlienType.ARTILLERY, AlienType.MOTHERSHIP];
+    if (heavyTypes.includes(alien.type) && alien.hp < alien.maxHp && alien.hp > 0) {
+        const barW = alien.width;
+        const barH = 4;
+        const barX = alien.pos.x;
+        const barY = alien.pos.y - 7;
+        const ratio = Math.max(0, Math.min(1, alien.hp / alien.maxHp));
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = ratio > 0.5 ? '#22c55e' : (ratio > 0.25 ? '#eab308' : '#ef4444');
+        ctx.fillRect(barX, barY, barW * ratio, barH);
     }
     ctx.restore();
 };
@@ -518,7 +596,8 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Particle[]) =
             ctx.shadowColor = p.color;
             ctx.fillRect(p.pos.x, p.pos.y, p.size, p.size);
         } else if (p.type === 'TEXT' && p.text) {
-            ctx.font = 'bold 12px monospace';
+            const fontSize = p.size >= 14 ? p.size : 12;
+            ctx.font = `bold ${fontSize}px monospace`;
             ctx.shadowBlur = 12;
             ctx.shadowColor = p.color;
             ctx.fillStyle = p.color;
@@ -564,10 +643,20 @@ export const drawGame = (
         gameTime: number;
         level: number;
         state: GameState;
+        shakeIntensity?: number;
     },
     cache: Record<string, HTMLCanvasElement>
 ) => {
     ctx.imageSmoothingEnabled = false;
+
+    const shake = gameState.shakeIntensity ?? 0;
+    const hasShake = shake > 0.2;
+    if (hasShake) {
+        ctx.save();
+        const dx = (Math.random() - 0.5) * shake * 2;
+        const dy = (Math.random() - 0.5) * shake * 2;
+        ctx.translate(dx, dy);
+    }
 
     renderBackground(ctx, gameState.stars, gameState.nebulas, gameState.gameTime);
     renderBlastZones(ctx, gameState.blastZones, gameState.gameTime);
@@ -580,5 +669,10 @@ export const drawGame = (
     gameState.aliens.forEach(a => renderAlien(ctx, a, gameState.gameTime, gameState.player, cache));
     renderPowerUps(ctx, gameState.powerUps, gameState.gameTime, cache);
     renderParticles(ctx, gameState.particles);
+
+    if (hasShake) {
+        ctx.restore();
+    }
+
     renderOverlays(ctx);
 };
