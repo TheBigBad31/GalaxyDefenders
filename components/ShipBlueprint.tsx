@@ -5,6 +5,7 @@ import { PlayerStats } from '../types';
 import { HealthGauge, ShieldGauge, MissileGauge } from './ui/StatusGauges';
 import { Zap, Crosshair, Hexagon, Rocket, Flame, Radio, Scan, Trophy, Activity, Shield, Swords } from 'lucide-react';
 import { WEAPON_BALANCE } from '../constants';
+import { highScoreService } from '../services/highScoreService';
 
 interface ShipBlueprintProps {
     stats: PlayerStats;
@@ -14,6 +15,7 @@ interface ShipBlueprintProps {
     maxHp: number;
     shieldEnergy: number;
     missileProgress: number;
+    shipId?: string;
 }
 
 // Configuration des modules pour l'affichage (position relative au conteneur du vaisseau)
@@ -26,8 +28,9 @@ const MODULES = [
 ];
 
 export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({ 
-    stats, score, level, hp, maxHp, shieldEnergy, missileProgress 
+    stats, score, level, hp, maxHp, shieldEnergy, missileProgress, shipId 
 }) => {
+    const bestScore = Math.max(score, highScoreService.getBestScore(shipId));
     // State to track which modules just leveled up for animation
     const [levelUpState, setLevelUpState] = useState<Record<string, boolean>>({});
     const prevStats = useRef<PlayerStats>(stats);
@@ -137,6 +140,9 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
             {/* Score & Level Row */}
             <div className="flex justify-between items-end">
                 <div>
+                    <div className="text-[9px] text-amber-400/80 uppercase tracking-widest mb-0.5 font-mono">
+                        BEST {bestScore.toString().padStart(6, '0')}
+                    </div>
                     <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Score</div>
                     <div className="text-xl tracking-wider text-green-400 font-bold drop-shadow-[0_0_5px_rgba(74,222,128,0.5)] flex items-center gap-2">
                          <Trophy size={14} className="text-yellow-500"/>

@@ -1,7 +1,8 @@
 import React from 'react';
-import { CheckCircle, Shield, Rocket, Flame, Radio, Award } from 'lucide-react';
+import { CheckCircle, Trophy } from 'lucide-react';
 import { ShipConfig } from '../../types';
 import PixelSprite from '../PixelSprite';
+import { highScoreService } from '../../services/highScoreService';
 
 interface ShipSelectionProps {
     ships: ShipConfig[];
@@ -20,6 +21,7 @@ export const ShipSelection: React.FC<ShipSelectionProps> = ({ ships, onSelect })
         <div className="grid grid-cols-3 gap-5 w-full max-w-3xl">
             {ships.map((ship) => {
                 const spriteKey = `PLAYER_${ship.id}_BASE`;
+                const bestRecord = highScoreService.getBestForShip(ship.id);
                 return (
                     <button
                         key={ship.id}
@@ -49,6 +51,15 @@ export const ShipSelection: React.FC<ShipSelectionProps> = ({ ships, onSelect })
                             <p className="text-[11px] text-gray-300 leading-tight h-10 px-1 font-mono">
                                 {ship.description}
                             </p>
+                            <div className="mt-2 pt-2 border-t border-gray-800/80 flex items-center justify-between text-[10px] font-mono">
+                                <span className="flex items-center gap-1 text-amber-400/90 font-bold">
+                                    <Trophy size={11} />
+                                    BEST {bestRecord ? bestRecord.score.toString().padStart(6, '0') : '------'}
+                                </span>
+                                <span className="text-cyan-400/80 font-bold">
+                                    SEC {bestRecord ? bestRecord.level : '-'}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">

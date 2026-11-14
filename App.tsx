@@ -185,6 +185,9 @@ const App: React.FC = () => {
                         level={level}
                         taunt={taunt}
                         onRestart={() => setGameState(GameState.MENU)}
+                        shipId={selectedShip.id}
+                        pilotName={currentUser.name}
+                        pilotId={currentUser.id}
                     />
                 )}
             </div>
@@ -203,6 +206,7 @@ const App: React.FC = () => {
             onCheat={handleCheat}
             onToggleVolume={toggleVolume}
             user={currentUser}
+            shipId={selectedShip.id}
         />
 
       </div>

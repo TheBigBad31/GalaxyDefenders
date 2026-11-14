@@ -1,6 +1,7 @@
-import React from 'react';
-import { Rocket, HelpCircle, Gamepad2, Shield, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { Rocket, HelpCircle, Gamepad2, Play, Trophy, X } from 'lucide-react';
 import { UserProfile, authService } from '../../services/authService';
+import { highScoreService } from '../../services/highScoreService';
 import { PlayerProfileBadge } from '../ui/PlayerProfileBadge';
 import { GoogleLoginButton } from '../ui/GoogleLoginButton';
 
@@ -13,6 +14,8 @@ interface MainMenuProps {
 
 export const MainMenu: React.FC<MainMenuProps> = ({ onStart, onHelp, gamepadConnected, user }) => {
     const currentUser = user || authService.getCurrentUser();
+    const [showHallOfFame, setShowHallOfFame] = useState(false);
+    const top10 = showHallOfFame ? highScoreService.getTop10() : [];
 
     return (
         <div className="absolute inset-0 bg-gray-950/90 flex flex-col items-center justify-center z-10 backdrop-blur-md">
@@ -57,14 +60,86 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStart, onHelp, gamepadConn
                 <span className="tracking-wider">ENGAGE MISSION</span>
             </button>
 
-            {/* Help / Codex Button */}
-            <button
-                onClick={onHelp}
-                className="mt-5 flex items-center gap-2 px-8 py-3 bg-gray-900/80 hover:bg-gray-800 text-cyan-300 text-sm font-bold rounded-xl border border-cyan-500/30 hover:border-cyan-400 transition-all backdrop-blur-sm shadow-md"
-            >
-                <HelpCircle size={18} className="text-cyan-400" />
-                <span className="tracking-wider font-mono">DATABASE & HELP</span>
-            </button>
+            {/* Secondary Action Buttons */}
+            <div className="mt-5 flex items-center gap-3">
+                <button
+                    onClick={onHelp}
+                    className="flex items-center gap-2 px-6 py-3 bg-gray-900/80 hover:bg-gray-800 text-cyan-300 text-sm font-bold rounded-xl border border-cyan-500/30 hover:border-cyan-400 transition-all backdrop-blur-sm shadow-md"
+                >
+                    <HelpCircle size={18} className="text-cyan-400" />
+                    <span className="tracking-wider font-mono">DATABASE & HELP</span>
+                </button>
+
+                <button
+                    onClick={() => setShowHallOfFame(true)}
+                    className="flex items-center gap-2 px-6 py-3 bg-gray-900/80 hover:bg-gray-800 text-amber-300 text-sm font-bold rounded-xl border border-amber-500/30 hover:border-amber-400 transition-all backdrop-blur-sm shadow-md"
+                >
+                    <Trophy size={18} className="text-amber-400" />
+                    <span className="tracking-wider font-mono">HALL OF FAME</span>
+                </button>
+            </div>
+
+            {showHallOfFame && (
+                <div className="absolute inset-0 bg-gray-950/95 z-30 flex items-center justify-center p-6 backdrop-blur-md">
+                    <div className="w-full max-w-xl bg-gray-900/90 border-2 border-amber-500/40 rounded-2xl p-6 shadow-[0_0_40px_rgba(251,191,36,0.2)]">
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+                            <div className="flex items-center gap-2.5">
+                                <Trophy className="w-6 h-6 text-amber-400" />
+                                <h2 className="text-xl font-black tracking-widest text-amber-300 font-mono">
+                                    HALL OF FAME — TOP 10
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setShowHallOfFame(false)}
+                                className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"
+                                aria-label="Close Hall of Fame"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {top10.length === 0 ? (
+                            <p className="text-center text-gray-400 font-mono text-sm py-8">
+                                NO MISSION RECORDS YET. ENGAGE MISSION TO SET THE FIRST RECORD!
+                            </p>
+                        ) : (
+                            <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
+                                {top10.map((entry, idx) => (
+                                    <div
+                                        key={`${entry.pilotId}-${entry.date}-${idx}`}
+                                        className={`flex items-center justify-between px-3 py-2 rounded-lg font-mono text-xs border ${
+                                            idx === 0
+                                                ? 'bg-amber-500/10 border-amber-400/50 text-amber-200'
+                                                : 'bg-gray-950/70 border-gray-800/80 text-gray-200'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className={`w-6 font-black ${idx === 0 ? 'text-amber-400' : 'text-cyan-400'}`}>
+                                                #{idx + 1}
+                                            </span>
+                                            <span className="font-bold truncate max-w-[140px]">
+                                                {entry.pilotName}
+                                            </span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 uppercase">
+                                                {entry.shipId}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-4 shrink-0">
+                                            <span className="text-gray-400">SEC {entry.level}</span>
+                                            {entry.maxCombo > 1 && (
+                                                <span className="text-fuchsia-400">x{entry.maxCombo}</span>
+                                            )}
+                                            <span className="font-black text-green-400 w-16 text-right">
+                                                {entry.score.toString().padStart(6, '0')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Controls Summary */}
             <div className="mt-8 text-gray-400 text-xs font-mono grid grid-cols-2 gap-x-8 gap-y-2 text-center bg-gray-900/50 p-4 rounded-xl border border-gray-800/80 backdrop-blur-sm">
