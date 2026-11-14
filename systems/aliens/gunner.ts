@@ -1,8 +1,12 @@
+import { AlienEntity } from './entity';
+import { nextEntityId } from '../../utils/id';
 import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
 import { PALETTES, ALIEN_CONFIGS, DIFFICULTY_SCALE, CANVAS_HEIGHT } from '../../constants';
 
-export const updateGunner = (alien: Alien, ctx: AlienUpdateContext) => {
+export class GunnerAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext): void {
+        const alien: Alien = this;
     const { player, bullets, currentLevel } = ctx;
     
     // Movement: Tracking
@@ -45,7 +49,7 @@ export const updateGunner = (alien: Alien, ctx: AlienUpdateContext) => {
             const vx = Math.cos(angle) * speed;
             const vy = Math.sin(angle) * speed;
             bullets.push({
-               id: Math.random().toString(),
+               id: nextEntityId(),
                pos: { x: alien.pos.x + alien.width / 2 - 4, y: alien.pos.y + alien.height },
                width: 8, height: 16,
                color: PALETTES.GUNNER['3'], 
@@ -59,4 +63,5 @@ export const updateGunner = (alien: Alien, ctx: AlienUpdateContext) => {
         alien.burstRemaining = 3;
         alien.burstTimer = 0;
     }
-};
+    }
+}

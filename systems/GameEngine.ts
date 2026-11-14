@@ -1,3 +1,4 @@
+import { nextEntityId } from '../utils/id';
 
 import { 
   GameState, Player, Alien, Bullet, Particle, PowerUp, PowerUpType, AlienType,
@@ -467,7 +468,7 @@ export class GameEngine {
             if (player.beamTimer <= 0) {
                 const fireBeam = (offsetX: number) => {
                     this.bullets.push({
-                        id: Math.random().toString(), pos: { x: player.pos.x + player.width / 2 - BULLET_SIZE.width / 2 + offsetX, y: player.pos.y },
+                        id: nextEntityId(), pos: { x: player.pos.x + player.width / 2 - BULLET_SIZE.width / 2 + offsetX, y: player.pos.y },
                         width: BULLET_SIZE.width, height: BULLET_SIZE.height, color: COLORS.bullet, active: true,
                         velocity: -WEAPON_BALANCE.BEAM.SPEED, vx: 0, isEnemy: false, variant: 'PLAYER_BEAM', damage: WEAPON_BALANCE.BEAM.DAMAGE
                     });
@@ -502,7 +503,7 @@ export class GameEngine {
                     const angle = conf.BASE_ANGLE + (i * conf.ANGLE_INCREMENT);
                     const spawnSpread = (a: number) => {
                         this.bullets.push({
-                            id: Math.random().toString(), pos: { x: player.pos.x + player.width / 2 - BULLET_SIZE.width / 2, y: player.pos.y },
+                            id: nextEntityId(), pos: { x: player.pos.x + player.width / 2 - BULLET_SIZE.width / 2, y: player.pos.y },
                             width: BULLET_SIZE.width, height: BULLET_SIZE.height, color: COLORS.bullet, active: true,
                             velocity: -Math.cos(a) * conf.SPEED, vx: Math.sin(a) * conf.SPEED, isEnemy: false, variant: 'PLAYER_SPREAD', damage: damage
                         });
@@ -520,7 +521,7 @@ export class GameEngine {
                      const speed = conf.SPEED_MIN + Math.random() * conf.SPEED_VAR;
                      const angle = -Math.PI / 2 + angleOffset;
                      this.bullets.push({
-                         id: Math.random().toString(), pos: { x: player.pos.x + player.width/2 - 4, y: player.pos.y },
+                         id: nextEntityId(), pos: { x: player.pos.x + player.width/2 - 4, y: player.pos.y },
                          width: 8, height: 8, color: COLORS.powerupFlame, active: true,
                          velocity: Math.sin(angle) * speed, vx: Math.cos(angle) * speed, 
                          isEnemy: false, variant: 'PLAYER_FLAME', life: conf.LIFE, damage: conf.DAMAGE
@@ -537,7 +538,7 @@ export class GameEngine {
                  const conf = WEAPON_BALANCE.SIDEWINDER;
                  const spawnSidewinder = (vx: number, vy: number) => {
                      this.bullets.push({
-                         id: Math.random().toString(), pos: { x: vx > 0 ? player.pos.x + player.width : player.pos.x, y: player.pos.y + player.height/2 },
+                         id: nextEntityId(), pos: { x: vx > 0 ? player.pos.x + player.width : player.pos.x, y: player.pos.y + player.height/2 },
                          width: 8, height: 8, color: COLORS.powerupSidewinder, active: true,
                          velocity: vy, vx: vx, isEnemy: false, variant: 'PLAYER_SIDEWINDER', damage: conf.DAMAGE
                      });
@@ -586,7 +587,7 @@ export class GameEngine {
             const direction = targetOffsetX >= 0 ? 1 : -1;
             const vx = direction * 0.5; 
             this.bullets.push({
-                id: Math.random().toString(), pos: { x: startX, y: startY },
+                id: nextEntityId(), pos: { x: startX, y: startY },
                 width: stats.width, height: stats.height, color: stats.color, active: true,
                 velocity: 6.0, vx: vx, isEnemy: false, variant: 'PLAYER_MISSILE',
                 missilePhase: 'DROP', missileTimer: 45, missileSize: size, damage: stats.damage
@@ -648,11 +649,22 @@ export class GameEngine {
     }
 
     private cleanupEntities() {
-        this.aliens = this.aliens.filter(a => a.active);
-        this.bullets = this.bullets.filter(b => b.active);
-        this.powerUps = this.powerUps.filter(p => p.active);
-        this.particles = this.particles.filter(p => p.life > 0);
-        this.blastZones = this.blastZones.filter(z => z.life > 0);
+        this.compactInPlace(this.aliens, a => a.active);
+        this.compactInPlace(this.bullets, b => b.active);
+        this.compactInPlace(this.powerUps, p => p.active);
+        this.compactInPlace(this.particles, p => p.life > 0);
+        this.compactInPlace(this.blastZones, z => z.life > 0);
+    }
+
+    private compactInPlace<T>(arr: T[], keep: (item: T) => boolean): void {
+        let writeIdx = 0;
+        for (let i = 0; i < arr.length; i++) {
+            const item = arr[i];
+            if (keep(item)) {
+                arr[writeIdx++] = item;
+            }
+        }
+        arr.length = writeIdx;
     }
 
     // --- COLLISIONS & EVENTS ---
@@ -708,7 +720,7 @@ export class GameEngine {
           const speed = (Math.random() * 2 + 1) * (intensity === 'MASSIVE' ? 3 : 1.5);
           const angle = Math.random() * Math.PI * 2;
           this.particles.push({
-            id: Math.random().toString(), pos: { x, y },
+            id: nextEntityId(), pos: { x, y },
             velocity: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
             life: 1.0, color: Math.random() > 0.5 ? color : '#ffffff', size: Math.random() * sizeBase + 1,
             type: 'SPARK', decay: Math.random() * 0.05 + 0.02

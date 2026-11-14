@@ -7,6 +7,9 @@ export class SpatialGrid {
     private cols: number;
     private rows: number;
     private buckets: Entity[][];
+    private queryId: number = 0;
+    private retrieveResult: Entity[] = [];
+    private seenQueryId = new WeakMap<Entity, number>();
 
     constructor(cellSize: number = 100) {
         this.cellSize = cellSize;
@@ -53,18 +56,23 @@ export class SpatialGrid {
         const minRow = Math.max(0, startRow);
         const maxRow = Math.min(this.rows - 1, endRow);
 
-        const candidates = new Set<Entity>();
+        this.queryId++;
+        this.retrieveResult.length = 0;
 
         for (let y = minRow; y <= maxRow; y++) {
             for (let x = minCol; x <= maxCol; x++) {
                 const index = y * this.cols + x;
                 const bucket = this.buckets[index];
                 for (let i = 0; i < bucket.length; i++) {
-                    candidates.add(bucket[i]);
+                    const candidate = bucket[i];
+                    if (this.seenQueryId.get(candidate) !== this.queryId) {
+                        this.seenQueryId.set(candidate, this.queryId);
+                        this.retrieveResult.push(candidate);
+                    }
                 }
             }
         }
 
-        return Array.from(candidates);
+        return this.retrieveResult;
     }
 }

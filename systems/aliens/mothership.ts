@@ -1,10 +1,13 @@
+import { AlienEntity } from './entity';
 
 import { AlienUpdateContext } from './types';
 import { Alien, AlienType } from '../../types';
 import { spawnKamikaze } from '../spawning/factories';
 import { COLORS } from '../../constants';
 
-export const updateMothership = (alien: Alien, ctx: AlienUpdateContext) => {
+export class MothershipAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext): void {
+        const alien: Alien = this;
     const { gameTime, aliens, bullets, playSound, player, createExplosion } = ctx;
     const isSupreme = alien.type === AlienType.SUPREME_MOTHERSHIP;
 
@@ -57,4 +60,5 @@ export const updateMothership = (alien: Alien, ctx: AlienUpdateContext) => {
         });
         createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height, '#c084fc', 'MEDIUM');
     }
-};
+    }
+}

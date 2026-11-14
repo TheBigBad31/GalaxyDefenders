@@ -4,7 +4,7 @@ import {
   GameState, AlienType, PowerUpType, PlayerStats, ShipConfig, BossStatus
 } from '../types';
 import { GameEngine } from '../systems/GameEngine';
-import { generateAlienTaunt } from '../services/geminiService';
+import { generateAlienTaunt } from '../services/tauntService';
 
 interface GameCanvasProps {
   gameState: GameState;

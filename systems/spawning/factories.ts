@@ -1,3 +1,4 @@
+import { nextEntityId } from '../../utils/id';
 
 import { 
     Alien, 
@@ -172,7 +173,7 @@ export const createPowerUp = (x: number, y: number, specificType?: PowerUpType, 
     const speed = 0.5 + Math.random() * 0.8;
 
     return {
-      id: Math.random().toString(),
+      id: nextEntityId(),
       pos: { x, y },
       width: POWERUP_SIZE.width,
       height: POWERUP_SIZE.height,

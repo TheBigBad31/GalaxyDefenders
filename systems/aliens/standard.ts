@@ -1,3 +1,4 @@
+import { nextEntityId } from '../../utils/id';
 
 import { AlienUpdateContext } from './types';
 import { Alien, AlienType, MovementType } from '../../types';
@@ -86,7 +87,7 @@ export class StandardAlien extends AlienEntity {
                  const vx = Math.cos(angle) * speed;
                  const vy = Math.sin(angle) * speed;
                  ctx.bullets.push({
-                    id: Math.random().toString(),
+                    id: nextEntityId(),
                     pos: { x: alienCenterX - 2, y: this.pos.y + this.height },
                     width: 4, height: 12,
                     color: COLORS.enemyBulletFast, 
@@ -117,7 +118,7 @@ export class StandardAlien extends AlienEntity {
                 const vx = Math.cos(a) * speed;
                 const vy = Math.sin(a) * speed;
                 ctx.bullets.push({
-                    id: Math.random().toString(),
+                    id: nextEntityId(),
                     pos: { x: this.pos.x + this.width / 2 - 4, y: this.pos.y + this.height },
                     width: 8, height: 16,
                     color: COLORS.enemyBulletHeavy,
@@ -161,7 +162,7 @@ export class StandardAlien extends AlienEntity {
             }
             
             ctx.bullets.push({
-                id: Math.random().toString(),
+                id: nextEntityId(),
                 pos: { x: this.pos.x + this.width / 2 - bSize.width / 2, y: this.pos.y + this.height },
                 width: bSize.width, height: bSize.height, color: bColor, active: true,
                 velocity: vy, vx: vx, isEnemy: true, bulletType: bType, variant: bVariant

@@ -1,9 +1,12 @@
+import { AlienEntity } from './entity';
 
 import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
 import { CANVAS_WIDTH } from '../../constants';
 
-export const updateUfo = (alien: Alien, ctx: AlienUpdateContext) => {
+export class UfoAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext): void {
+        const alien: Alien = this;
     // Movement: Patrol Ping Pong
     alien.pos.x += alien.vx || 0;
     
@@ -18,4 +21,5 @@ export const updateUfo = (alien: Alien, ctx: AlienUpdateContext) => {
     alien.pos.y = 180 + Math.sin(ctx.gameTime * 0.05) * 20;
     
     // UFO does not fire bullets itself, it reflects them (handled in collision)
-};
+    }
+}
