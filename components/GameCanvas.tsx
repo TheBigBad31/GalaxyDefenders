@@ -101,7 +101,7 @@ const GameCanvas = forwardRef<GameCanvasRef, GameCanvasProps>(({
     // Sync React state to Engine state
     engineRef.current.gameState = gameState;
 
-    if (gameState === GameState.PLAYING && prevGameStateRef.current !== GameState.PLAYING) {
+    if (gameState === GameState.PLAYING && prevGameStateRef.current !== GameState.PLAYING && prevGameStateRef.current !== GameState.PAUSED) {
         engineRef.current.initGame(selectedShip);
     }
     prevGameStateRef.current = gameState;
