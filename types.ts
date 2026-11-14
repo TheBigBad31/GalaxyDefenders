@@ -136,6 +136,7 @@ export interface Alien extends Entity {
   scoreValue: number;
   hp: number;
   maxHp: number;
+  hitFlashTimer?: number;
   shieldHp?: number; 
   movementType: MovementType;
   startX: number;

@@ -13,7 +13,7 @@ import {
 import { PALETTES } from '../constants/palettes';
 import { generateAllSprites } from '../utils/graphics';
 import { createPowerUp, spawnWaveEnemies } from './spawning';
-import { drawGame } from './renderer';
+import { drawGame, getShipThrusterColor } from './renderer';
 import { playSound } from '../services/audioService';
 import { updateAlien } from './aliens/manager';
 import { updateBullet } from './bullets/manager';
@@ -52,6 +52,8 @@ export class GameEngine {
     public bullets: Bullet[] = [];
     public particles: Particle[] = [];
     public powerUps: PowerUp[] = [];
+    private shakeIntensity: number = 0;
+    private readonly shakeDecay: number = 0.85;
     public blastZones: BlastZone[] = [];
     public stars: Star[] = [];
     public nebulas: Nebula[] = [];
@@ -283,6 +285,34 @@ export class GameEngine {
         this.updateEntities();
         this.updateCollisions();
         this.cleanupEntities();
+
+        if (this.shakeIntensity > 0) {
+            this.shakeIntensity *= this.shakeDecay;
+            if (this.shakeIntensity < 0.2) this.shakeIntensity = 0;
+        }
+
+        for (let i = 0; i < this.aliens.length; i++) {
+            const alien = this.aliens[i];
+            if (!alien.active) continue;
+            if ((alien.hitFlashTimer || 0) > 0) {
+                alien.hitFlashTimer = Math.max(0, (alien.hitFlashTimer || 0) - 1);
+            }
+            if (alien.hp / alien.maxHp < 0.4 && Math.random() < 0.12) {
+                this.particles.push({
+                    id: 'dmg-' + Math.random(),
+                    pos: {
+                        x: alien.pos.x + Math.random() * alien.width,
+                        y: alien.pos.y + Math.random() * alien.height
+                    },
+                    velocity: { x: (Math.random() - 0.5) * 1.5, y: -Math.random() * 1.5 - 0.5 },
+                    life: 0.7,
+                    decay: 0.04,
+                    color: Math.random() < 0.5 ? '#f97316' : '#94a3b8',
+                    size: Math.random() * 3 + 2,
+                    type: Math.random() < 0.5 ? 'SPARK' : 'SMOKE'
+                });
+            }
+        }
     }
 
     private draw() {
@@ -300,7 +330,8 @@ export class GameEngine {
             bossActive: this.bossActive,
             gameTime: this.gameTime,
             level: this.level,
-            state: this.gameState
+            state: this.gameState,
+            shakeIntensity: this.shakeIntensity
         }, this.spriteCache);
     }
 
@@ -420,7 +451,7 @@ export class GameEngine {
         if (this.gameTime % 3 === 0 && this.player.active) {
             this.particles.push({
                 id: 'trail-' + Math.random(), pos: { x: this.player.pos.x + this.player.width / 2 - 2, y: this.player.pos.y + this.player.height },
-                velocity: { x: (Math.random() - 0.5), y: Math.random() * 2 + 2 }, life: 0.8, color: PALETTES.PLAYER['4'], size: Math.random() * 3 + 2
+                velocity: { x: (Math.random() - 0.5), y: Math.random() * 2 + 2 }, life: 0.8, color: getShipThrusterColor(this.player.shipId), size: Math.random() * 3 + 2
             });
         }
     }
@@ -440,6 +471,8 @@ export class GameEngine {
                     if (hasBoss) {
                         this.bossActive = true;
                         this.createExplosion(CANVAS_WIDTH/2, 100, '#ff0000', 'MASSIVE');
+                        this.triggerShake(10);
+                        this.emitTextPopup(CANVAS_WIDTH / 2, 160, 'WARNING: BOSS', '#ef4444', 24, 0.012);
                         playSound('BOSS_SPAWN'); 
                     }
 
@@ -451,6 +484,7 @@ export class GameEngine {
                  this.wave = 0; 
                  this.callbacks.setLevel(this.level);
                  this.createExplosion(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, '#00ffff', 'MASSIVE');
+                 this.emitTextPopup(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20, `SECTOR ${this.level - 1} CLEAR!`, '#22d3ee', 26, 0.01);
                  this.score += DIFFICULTY_SCALE.levelBonus * this.level;
                  this.callbacks.setScore(this.score);
                  this.waveTimer = 180; 
@@ -738,8 +772,27 @@ export class GameEngine {
         });
     }
 
+    private triggerShake(intensity: number) {
+        this.shakeIntensity = Math.min(18, Math.max(this.shakeIntensity, intensity));
+    }
+
+    private emitTextPopup(x: number, y: number, text: string, color: string, size: number = 14, decay: number = 0.02) {
+        this.particles.push({
+            id: 'txt-' + Math.random(),
+            pos: { x, y },
+            velocity: { x: 0, y: -0.6 },
+            life: 1.0,
+            decay,
+            color,
+            size,
+            type: 'TEXT',
+            text
+        });
+    }
+
     private handleAlienHit(alien: Alien) {
         alien.hp -= 1;
+        alien.hitFlashTimer = 4;
         let explosionColor = alien.color;
         if ((PALETTES as any)[alien.type]) explosionColor = (PALETTES as any)[alien.type]['1'];
         this.createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, explosionColor, 'SMALL');
@@ -749,10 +802,14 @@ export class GameEngine {
             this.score += alien.scoreValue;
             this.callbacks.setScore(this.score);
             this.createExplosion(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, explosionColor, 'LARGE');
+            if (alien.scoreValue >= 300) {
+                this.emitTextPopup(alien.pos.x + alien.width / 2, alien.pos.y, `+${alien.scoreValue}`, '#facc15', 14, 0.02);
+            }
             playSound('EXPLOSION'); 
             
             const bossTypes = [AlienType.BOSS, AlienType.SUPREME_MOTHERSHIP, AlienType.SUPREME_ARTILLERY];
             if (bossTypes.includes(alien.type)) {
+                this.triggerShake(14);
                 this.bossActive = false;
                 this.callbacks.setBossStatus({ active: false, name: '', hp: 0, maxHp: 1, color: '' });
                 this.aliens.forEach(other => {
@@ -783,6 +840,7 @@ export class GameEngine {
         const damage = DAMAGE_VALUES[sourceVariant] || DAMAGE_VALUES['DEFAULT_COLLISION'];
         this.player.hp -= damage;
         this.callbacks.setHp(this.player.hp);
+        this.triggerShake(8);
         playSound('PLAYER_HIT');
         this.createExplosion(this.player.pos.x + this.player.width/2, this.player.pos.y + this.player.height/2, '#f43f5e', 'LARGE');
         if (this.player.hp <= 0) {
