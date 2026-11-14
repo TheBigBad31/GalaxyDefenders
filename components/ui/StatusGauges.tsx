@@ -46,8 +46,8 @@ export const HealthGauge: React.FC<GaugeProps> = ({ value, max, className }) => 
 
 // 2. ACTIVE DEFLECTOR (Continuous Energy Bar)
 export const ShieldGauge: React.FC<GaugeProps> = ({ value, max, className }) => {
-  // Value is already 0-100 usually for energy, but let's be safe
-  const percent = Math.max(0, Math.min(100, value)); // Assuming value is % for shield energy
+  const safeMax = max > 0 ? max : 100;
+  const percent = Math.max(0, Math.min(100, (value / safeMax) * 100));
 
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
@@ -55,7 +55,7 @@ export const ShieldGauge: React.FC<GaugeProps> = ({ value, max, className }) => 
         <span className="flex items-center gap-2 text-cyan-400">
           <Shield size={14} /> Deflector
         </span>
-        <span className="text-cyan-300 font-mono">{Math.floor(percent)}%</span>
+        <span className="text-cyan-300 font-mono">{Math.floor(value)}/{safeMax}</span>
       </div>
 
       <div className="relative h-4 bg-gray-900 border border-gray-700 rounded-sm transform skew-x-12 overflow-hidden shadow-inner">

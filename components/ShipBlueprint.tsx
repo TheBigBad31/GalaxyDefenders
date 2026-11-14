@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import PixelSprite from './PixelSprite';
-import { PlayerStats } from '../types';
+import { PlayerStats, ShipConfig } from '../types';
 import { HealthGauge, ShieldGauge, MissileGauge } from './ui/StatusGauges';
 import { Zap, Crosshair, Hexagon, Rocket, Flame, Radio, Scan, Trophy, Activity, Shield, Swords } from 'lucide-react';
 import { WEAPON_BALANCE } from '../constants';
@@ -13,20 +13,22 @@ interface ShipBlueprintProps {
     hp: number;
     maxHp: number;
     shieldEnergy: number;
+    maxShieldEnergy: number;
     missileProgress: number;
+    selectedShip?: ShipConfig;
 }
 
 // Configuration des modules pour l'affichage (position relative au conteneur du vaisseau)
 const MODULES = [
-    { id: 'beam', label: 'BEAM CANON', prop: 'beamLevel', max: 5, color: 'text-yellow-400', bg: 'bg-yellow-400', border: 'border-yellow-400', icon: Zap, pos: 'top-4 left-1/2 -translate-x-1/2' },
-    { id: 'sidewinder', label: 'SIDEWINDER', prop: 'sidewinderLevel', max: 3, color: 'text-purple-400', bg: 'bg-purple-400', border: 'border-purple-400', icon: Radio, pos: 'top-[80px] left-1' },
-    { id: 'spread', label: 'SPREAD GUN', prop: 'spreadLevel', max: 5, color: 'text-cyan-400', bg: 'bg-cyan-400', border: 'border-cyan-400', icon: Scan, pos: 'top-[80px] right-1 text-right items-end' },
+    { id: 'beam', label: 'BEAM CANON', prop: 'beamLevel', max: WEAPON_BALANCE.BEAM.COOLDOWNS.length - 1, color: 'text-yellow-400', bg: 'bg-yellow-400', border: 'border-yellow-400', icon: Zap, pos: 'top-4 left-1/2 -translate-x-1/2' },
+    { id: 'sidewinder', label: 'SIDEWINDER', prop: 'sidewinderLevel', max: WEAPON_BALANCE.SIDEWINDER.COOLDOWNS.length, color: 'text-purple-400', bg: 'bg-purple-400', border: 'border-purple-400', icon: Radio, pos: 'top-[80px] left-1' },
+    { id: 'spread', label: 'SPREAD GUN', prop: 'spreadLevel', max: WEAPON_BALANCE.SPREAD.MAX_PAIRS, color: 'text-cyan-400', bg: 'bg-cyan-400', border: 'border-cyan-400', icon: Scan, pos: 'top-[80px] right-1 text-right items-end' },
     { id: 'flame', label: 'FLAME THROWER', prop: 'flameLevel', max: 3, color: 'text-orange-400', bg: 'bg-orange-400', border: 'border-orange-400', icon: Flame, pos: 'bottom-[80px] left-1' },
     { id: 'missile', label: 'WARHEADS', prop: 'missileLevel', max: 8, color: 'text-red-400', bg: 'bg-red-400', border: 'border-red-400', icon: Rocket, pos: 'bottom-[80px] right-1 text-right items-end' },
 ];
 
 export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({ 
-    stats, score, level, hp, maxHp, shieldEnergy, missileProgress 
+    stats, score, level, hp, maxHp, shieldEnergy, maxShieldEnergy, missileProgress, selectedShip 
 }) => {
     // State to track which modules just leveled up for animation
     const [levelUpState, setLevelUpState] = useState<Record<string, boolean>>({});
@@ -152,7 +154,7 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
             {/* Gauges */}
             <div className="flex flex-col gap-2 mt-1">
                 <HealthGauge value={hp} max={maxHp} />
-                <ShieldGauge value={shieldEnergy} max={100} />
+                <ShieldGauge value={shieldEnergy} max={maxShieldEnergy} />
                 {stats.missileLevel > 0 && (
                     <MissileGauge value={missileProgress} max={100} />
                 )}
@@ -187,7 +189,7 @@ export const ShipBlueprint: React.FC<ShipBlueprintProps> = ({
              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 opacity-80 transition-transform duration-700 group-hover:scale-105">
                  <div className="relative">
                      <div className="absolute inset-0 bg-cyan-500 blur-[40px] opacity-10 animate-pulse"></div>
-                     <PixelSprite spriteKey="PLAYER" scale={3} />
+                     <PixelSprite spriteKey={selectedShip ? `PLAYER_${selectedShip.id}_BASE` : 'PLAYER'} scale={selectedShip?.scale ? 2.4 : 3} />
                  </div>
              </div>
              
