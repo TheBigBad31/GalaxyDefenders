@@ -19,7 +19,130 @@ import {
 } from '../constants';
 import { HD_SHIPS, HD_ENEMIES, getTransparentImageCanvas } from '../utils/graphics';
 
-// --- HELPERS ---
+// --- OFFSCREEN CACHES & HELPERS ---
+
+const hexToRgba = (color: string, alpha: number): string => {
+    if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        const full = hex.length === 3
+            ? hex.split('').map(c => c + c).join('')
+            : hex;
+        const r = parseInt(full.slice(0, 2), 16) || 0;
+        const g = parseInt(full.slice(2, 4), 16) || 0;
+        const b = parseInt(full.slice(4, 6), 16) || 0;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    if (color.startsWith('rgb(')) {
+        return color.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+    }
+    return color;
+};
+
+let bgCacheCanvas: HTMLCanvasElement | null = null;
+const getBackgroundCanvas = (): HTMLCanvasElement => {
+    if (bgCacheCanvas) return bgCacheCanvas;
+    const canvas = document.createElement('canvas');
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+        gradient.addColorStop(0, '#03000a');
+        gradient.addColorStop(0.5, '#0b001a');
+        gradient.addColorStop(1, '#15002e');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    }
+    bgCacheCanvas = canvas;
+    return canvas;
+};
+
+const nebulaCache: Record<string, HTMLCanvasElement> = {};
+const getNebulaCanvas = (color: string, size: number): HTMLCanvasElement => {
+    const key = `${color}_${size}`;
+    if (nebulaCache[key]) return nebulaCache[key];
+    const d = Math.ceil(size * 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = d;
+    canvas.height = d;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        const grad = ctx.createRadialGradient(size, size, 0, size, size, size);
+        grad.addColorStop(0, color);
+        grad.addColorStop(0.6, hexToRgba(color, 0.3));
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, d, d);
+    }
+    nebulaCache[key] = canvas;
+    return canvas;
+};
+
+let overlayCacheCanvas: HTMLCanvasElement | null = null;
+const getOverlayCanvas = (): HTMLCanvasElement => {
+    if (overlayCacheCanvas) return overlayCacheCanvas;
+    const canvas = document.createElement('canvas');
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        // CRT Scanlines
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        for (let i = 0; i < CANVAS_HEIGHT; i += 3) {
+            ctx.fillRect(0, i, CANVAS_WIDTH, 1);
+        }
+        // Deep Space Radial Vignette
+        const rad = ctx.createRadialGradient(
+            CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT / 3,
+            CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT
+        );
+        rad.addColorStop(0, 'rgba(0,0,0,0)');
+        rad.addColorStop(1, 'rgba(3,0,12,0.65)');
+        ctx.fillStyle = rad;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    }
+    overlayCacheCanvas = canvas;
+    return canvas;
+};
+
+const glowCache: Record<string, HTMLCanvasElement> = {};
+const getGlowSprite = (color: string): HTMLCanvasElement => {
+    if (glowCache[color]) return glowCache[color];
+    const size = 64;
+    const half = size / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+        grad.addColorStop(0, hexToRgba(color, 0.9));
+        grad.addColorStop(0.35, hexToRgba(color, 0.45));
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+    }
+    glowCache[color] = canvas;
+    return canvas;
+};
+
+const drawGlow = (
+    ctx: CanvasRenderingContext2D,
+    color: string,
+    cx: number,
+    cy: number,
+    radius: number,
+    alpha = 1
+) => {
+    const prevComp = ctx.globalCompositeOperation;
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = prevAlpha * alpha;
+    const sprite = getGlowSprite(color);
+    ctx.drawImage(sprite, cx - radius, cy - radius, radius * 2, radius * 2);
+    ctx.globalCompositeOperation = prevComp;
+    ctx.globalAlpha = prevAlpha;
+};
 
 const drawCachedSprite = (
     ctx: CanvasRenderingContext2D, 
@@ -48,46 +171,30 @@ const drawCachedSprite = (
 // --- SUB-RENDERERS ---
 
 const renderBackground = (ctx: CanvasRenderingContext2D, stars: Star[], nebulas: Nebula[], gameTime: number) => {
-    // Deep Space Cyberpunk Synthwave Gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    gradient.addColorStop(0, '#03000a');
-    gradient.addColorStop(0.5, '#0b001a');
-    gradient.addColorStop(1, '#15002e');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    // Cached Deep Space Cyberpunk Synthwave Gradient
+    ctx.drawImage(getBackgroundCanvas(), 0, 0);
 
-    // Glowing Nebulae
-    nebulas.forEach(neb => {
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.beginPath();
-        ctx.arc(neb.x, neb.y, neb.size, 0, Math.PI * 2);
-        const grad = ctx.createRadialGradient(neb.x, neb.y, 0, neb.x, neb.y, neb.size);
-        grad.addColorStop(0, neb.color);
-        grad.addColorStop(0.6, neb.color.replace(')', ', 0.3)').replace('rgb', 'rgba'));
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
-    });
+    // Cached Glowing Nebulae
+    ctx.globalAlpha = 0.35;
+    for (let i = 0; i < nebulas.length; i++) {
+        const neb = nebulas[i];
+        const nebCanvas = getNebulaCanvas(neb.color, neb.size);
+        ctx.drawImage(nebCanvas, neb.x - neb.size, neb.y - neb.size);
+    }
 
-    // Twinkling Starfield
-    stars.forEach(star => {
-        ctx.save();
+    // Twinkling Starfield (no save/restore or shadowBlur)
+    for (let i = 0; i < stars.length; i++) {
+        const star = stars[i];
         const pulse = Math.sin(gameTime * 0.05 + star.x) * 0.3 + 0.7;
         ctx.globalAlpha = star.alpha * pulse;
-        
         if (star.size > 2) {
-            ctx.shadowBlur = 6;
-            ctx.shadowColor = star.speed > 2 ? '#22d3ee' : '#e879f9';
             ctx.fillStyle = star.speed > 2 ? '#cffafe' : '#fae8ff';
         } else {
             ctx.fillStyle = '#ffffff';
         }
-        
         ctx.fillRect(star.x, star.y, star.size, star.size);
-        ctx.restore();
-    });
+    }
+    ctx.globalAlpha = 1;
 };
 
 const renderBlastZones = (ctx: CanvasRenderingContext2D, blastZones: BlastZone[], gameTime: number) => {
@@ -97,20 +204,14 @@ const renderBlastZones = (ctx: CanvasRenderingContext2D, blastZones: BlastZone[]
         const pulse = 1 + Math.sin(gameTime * 0.2) * 0.1;
         const currentRadius = zone.radius * pulse;
 
-        // Volumetric Explosion Ring
-        const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, currentRadius);
-        radGrad.addColorStop(0, '#ffffff');
-        radGrad.addColorStop(0.3, '#facc15');
-        radGrad.addColorStop(0.6, '#f97316');
-        radGrad.addColorStop(0.85, '#ef4444');
-        radGrad.addColorStop(1, 'transparent');
-
         ctx.globalAlpha = zone.life;
-        ctx.fillStyle = radGrad;
-        ctx.shadowBlur = 25;
-        ctx.shadowColor = '#f97316';
+        drawGlow(ctx, '#ef4444', 0, 0, currentRadius * 1.15, 0.85);
+        drawGlow(ctx, '#f97316', 0, 0, currentRadius * 0.85, 0.9);
+        drawGlow(ctx, '#facc15', 0, 0, currentRadius * 0.5, 0.95);
+
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+        ctx.arc(0, 0, currentRadius * 0.22, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     });
@@ -137,11 +238,10 @@ const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number
     ctx.translate(jitterX, jitterY);
 
     if (b.variant === 'PLAYER_MISSILE') {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#f87171';
         let rotation = b.missilePhase === 'DROP' ? b.vx * 0.2 : 0;
         ctx.translate(b.pos.x + b.width/2, b.pos.y + b.height/2);
         ctx.rotate(rotation);
+        drawGlow(ctx, '#f87171', 0, 0, Math.max(b.width, b.height) * 0.85, 0.55);
         let spriteKey = 'MISSILE_SMALL';
         if (b.missileSize === 'MEDIUM') spriteKey = 'MISSILE_MEDIUM';
         if (b.missileSize === 'LARGE') spriteKey = 'MISSILE_LARGE';
@@ -156,40 +256,29 @@ const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number
     
     if (b.variant === 'PLAYER_FLAME') {
         ctx.globalAlpha = b.life || 1;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#f97316';
-
         const cx = b.pos.x + b.width/2;
         const cy = b.pos.y + b.height/2;
         const radius = b.width/2 + Math.random()*3;
 
-        const flameGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        flameGrad.addColorStop(0, '#ffffff');
-        flameGrad.addColorStop(0.3, '#facc15');
-        flameGrad.addColorStop(0.7, '#ea580c');
-        flameGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = flameGrad;
+        drawGlow(ctx, '#ea580c', cx, cy, radius * 1.4, 0.8);
+        drawGlow(ctx, '#facc15', cx, cy, radius * 0.9, 0.9);
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius * 0.35, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
         return;
     }
 
     if (b.variant === 'UFO_BEAM') {
-        const grad = ctx.createLinearGradient(b.pos.x, 0, b.pos.x + b.width, 0);
         const pulse = Math.abs(Math.sin(gameTime * 0.8));
-        grad.addColorStop(0, `rgba(248, 113, 113, 0)`);
-        grad.addColorStop(0.2, `rgba(248, 113, 113, ${0.6 + pulse * 0.4})`);
-        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 + pulse * 0.1})`);
-        grad.addColorStop(0.8, `rgba(248, 113, 113, ${0.6 + pulse * 0.4})`);
-        grad.addColorStop(1, `rgba(248, 113, 113, 0)`);
-        
-        ctx.fillStyle = grad;
-        ctx.shadowBlur = 25 * pulse;
-        ctx.shadowColor = '#ef4444';
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(239, 68, 68, ${0.35 + pulse * 0.25})`;
+        ctx.fillRect(b.pos.x - 4, b.pos.y, b.width + 8, b.height);
+        ctx.fillStyle = `rgba(248, 113, 113, ${0.6 + pulse * 0.3})`;
         ctx.fillRect(b.pos.x, b.pos.y, b.width, b.height);
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.85 + pulse * 0.15})`;
+        ctx.fillRect(b.pos.x + b.width * 0.25, b.pos.y, b.width * 0.5, b.height);
         ctx.restore();
         return;
     }
@@ -199,10 +288,9 @@ const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number
 
     switch (b.variant) {
         case 'PLAYER_BEAM':
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = COLORS.powerupBeam;
-            
-            // Outer Glowing Beam
+            // Outer Glowing Beam (no shadowBlur)
+            ctx.fillStyle = hexToRgba(COLORS.powerupBeam, 0.35);
+            ctx.fillRect(b.pos.x - 3, b.pos.y, b.width + 6, b.height);
             ctx.fillStyle = COLORS.powerupBeam;
             ctx.fillRect(b.pos.x - 1, b.pos.y, b.width + 2, b.height);
             // Incandescent White Core
@@ -212,8 +300,7 @@ const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number
         case 'PLAYER_SPREAD':
             ctx.translate(cx, cy);
             ctx.rotate(Math.atan2(b.velocity, b.vx) - Math.PI / 2);
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = COLORS.powerupSpread;
+            drawGlow(ctx, COLORS.powerupSpread, 0, 0, 12, 0.65);
             ctx.fillStyle = COLORS.powerupSpread;
             ctx.beginPath();
             ctx.ellipse(0, 0, 4, 8, 0, 0, Math.PI * 2);
@@ -226,61 +313,55 @@ const renderBullet = (ctx: CanvasRenderingContext2D, b: Bullet, gameTime: number
         case 'PLAYER_SIDEWINDER':
             ctx.translate(cx, cy);
             ctx.rotate(gameTime * 0.25); 
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = COLORS.powerupSidewinder;
+            drawGlow(ctx, COLORS.powerupSidewinder, 0, 0, 14, 0.7);
             ctx.fillStyle = COLORS.powerupSidewinder;
             ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#ffffff';
             ctx.beginPath(); ctx.arc(-2, -2, 3, 0, Math.PI * 2); ctx.fill();
             break;
         case 'ENEMY_NORMAL':
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = '#4ade80';
+            drawGlow(ctx, '#4ade80', cx, cy, Math.max(b.width, b.height) * 0.9, 0.45);
             drawCachedSprite(ctx, cache, 'BULLET_NORMAL', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'ENEMY_FAST':
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#e879f9';
+            drawGlow(ctx, '#e879f9', cx, cy, Math.max(b.width, b.height) * 0.95, 0.5);
             drawCachedSprite(ctx, cache, 'BULLET_FAST', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'ENEMY_HEAVY':
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = '#fbbf24';
+            drawGlow(ctx, '#fbbf24', cx, cy, Math.max(b.width, b.height) * 1.0, 0.55);
             drawCachedSprite(ctx, cache, 'BULLET_HEAVY', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'BOSS':
-            ctx.shadowBlur = 20; 
-            ctx.shadowColor = '#ef4444';
+            drawGlow(ctx, '#ef4444', cx, cy, b.width * 1.1, 0.75);
             ctx.fillStyle = '#991b1b'; ctx.beginPath(); ctx.arc(cx, cy, b.width / 2, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(cx, cy, b.width / 2 - 2, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#ffffff';
             if (gameTime % 4 < 2) ctx.fillRect(cx - 2, cy - 2, 4, 4);
             break;
         case 'ENEMY_SNIPER':
-            ctx.shadowBlur = 15; ctx.shadowColor = '#f43f5e';
+            drawGlow(ctx, '#f43f5e', cx, cy, Math.max(b.width, b.height) * 1.1, 0.6);
             drawCachedSprite(ctx, cache, 'BULLET_SNIPER', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'ENEMY_DESTRUCTIBLE':
-            ctx.shadowBlur = 10; ctx.shadowColor = '#f97316';
+            drawGlow(ctx, '#f97316', cx, cy, Math.max(b.width, b.height) * 0.95, 0.5);
             drawCachedSprite(ctx, cache, 'BULLET_DESTRUCTIBLE', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'ENEMY_GALAXY':
-            ctx.shadowBlur = 12; ctx.shadowColor = '#0ea5e9';
+            drawGlow(ctx, '#0ea5e9', cx, cy, Math.max(b.width, b.height) * 1.0, 0.55);
             drawCachedSprite(ctx, cache, 'BULLET_GALAXY', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'ENEMY_POD':
-            ctx.shadowBlur = 10; ctx.shadowColor = '#a855f7';
+            drawGlow(ctx, '#a855f7', cx, cy, Math.max(b.width, b.height) * 0.95, 0.5);
             drawCachedSprite(ctx, cache, 'BULLET_POD', b.pos.x, b.pos.y, b.width, b.height);
             break;
         case 'ENEMY_HOMING':
-            ctx.shadowBlur = 18 * (1.0 + Math.sin(gameTime * 0.2) * 0.3);
-            ctx.shadowColor = '#ec4899';
+            drawGlow(ctx, '#ec4899', cx, cy, Math.max(b.width, b.height) * (1.1 + Math.sin(gameTime * 0.2) * 0.2), 0.7);
             drawCachedSprite(ctx, cache, 'BULLET_HOMING', b.pos.x, b.pos.y, b.width, b.height);
             ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.8;
             ctx.beginPath(); ctx.arc(cx, cy, b.width/4, 0, Math.PI * 2); ctx.fill();
             break;
         default:
-            ctx.shadowBlur = 8; ctx.shadowColor = b.color;
+            drawGlow(ctx, b.color, cx, cy, Math.max(b.width, b.height) * 0.9, 0.45);
             ctx.fillStyle = b.color;
             ctx.fillRect(b.pos.x, b.pos.y, b.width, b.height);
             break;
@@ -294,26 +375,21 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, player: Player, gameTime: n
     const cx = player.pos.x + player.width / 2;
     const cy = player.pos.y + player.height / 2;
 
-    // Glowing Thruster Flames under ship
-    ctx.save();
+    // Glowing Thruster Flames under ship (no createLinearGradient / shadowBlur)
     const flameHeight = 10 + Math.random() * 8;
-    const flameGrad = ctx.createLinearGradient(cx, player.pos.y + player.height, cx, player.pos.y + player.height + flameHeight);
-    flameGrad.addColorStop(0, '#ffffff');
-    flameGrad.addColorStop(0.4, player.shipId === 'TOPHE' ? '#06b6d4' : (player.shipId === 'JEFF' ? '#a855f7' : (player.shipId === 'BOLTON' ? '#f97316' : '#ef4444')));
-    flameGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = flameGrad;
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = flameGrad.addColorStop ? '#38bdf8' : '#ef4444';
+    const flameColor = player.shipId === 'TOPHE' ? '#06b6d4' : (player.shipId === 'JEFF' ? '#a855f7' : (player.shipId === 'BOLTON' ? '#f97316' : '#ef4444'));
+    drawGlow(ctx, flameColor, cx, player.pos.y + player.height + flameHeight * 0.4, 14, 0.65);
+    ctx.fillStyle = flameColor;
     ctx.fillRect(cx - 5, player.pos.y + player.height - 2, 10, flameHeight);
-    ctx.restore();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 2, player.pos.y + player.height - 2, 4, flameHeight * 0.55);
 
     // Shield Aura Hexagonal / Elliptical Dome
     if (player.isShielding && player.shieldEnergy > 0) {
         const radius = (player.width / 2) * 1.6;
 
         ctx.save();
-        ctx.shadowBlur = 25;
-        ctx.shadowColor = COLORS.shieldAura;
+        drawGlow(ctx, COLORS.shieldAura, cx, cy, radius * 1.25, 0.35);
         ctx.beginPath();
         ctx.strokeStyle = COLORS.shieldAura;
         ctx.lineWidth = 3;
@@ -338,9 +414,7 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, player: Player, gameTime: n
 
     // Ship Sprite Render
     ctx.save();
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = player.color;
-    
+    drawGlow(ctx, player.color, cx, cy, player.width * 0.8, 0.35);
     ctx.translate(cx, cy);
 
     // Lean rotation angle for smooth steering animation (-15 deg to +15 deg)
@@ -395,18 +469,28 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(endX, endY);
+            ctx.strokeStyle = '#ff0044';
+            ctx.lineWidth = 4.5;
+            ctx.globalAlpha = 0.35;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2.5;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff0044';
+            ctx.lineWidth = 2;
             ctx.globalAlpha = Math.floor(gameTime / 3) % 2 === 0 ? 0.9 : 0.4;
             ctx.stroke();
             ctx.globalAlpha = 1;
         }
     }
 
-    ctx.shadowBlur = alien.type === AlienType.BOSS ? 25 : 12;
-    ctx.shadowColor = alien.color;
+    const isSupreme = alien.type === AlienType.SUPREME_MOTHERSHIP || alien.type === AlienType.SUPREME_ARTILLERY;
+    if (isSupreme) {
+        const pulse = 0.55 + Math.sin(gameTime * 0.12) * 0.25;
+        drawGlow(ctx, '#f59e0b', alien.pos.x + alien.width / 2, alien.pos.y + alien.height / 2, Math.max(alien.width, alien.height) * 0.85, pulse);
+        drawGlow(ctx, '#ef4444', alien.pos.x + alien.width / 2, alien.pos.y + alien.height / 2, Math.max(alien.width, alien.height) * 0.65, pulse * 0.8);
+    }
     
     let spriteKey = alien.type.toString();
     const hpRatio = alien.hp / alien.maxHp;
@@ -420,8 +504,6 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
         ctx.arc(alien.pos.x + alien.width/2, alien.pos.y + alien.height/2, alien.width/2 + 6, 0, Math.PI * 2);
         ctx.strokeStyle = PALETTES.REFLECTOR['3'];
         ctx.lineWidth = 2.5;
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = PALETTES.REFLECTOR['3'];
         ctx.globalAlpha = 0.7;
         ctx.stroke();
         ctx.globalAlpha = 1;
@@ -433,8 +515,6 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
         ctx.translate(ufoCx, alien.pos.y + alien.height - 5);
         ctx.strokeStyle = PALETTES.UFO['3'] || '#0ea5e9';
         ctx.lineWidth = 2.5;
-        ctx.shadowColor = PALETTES.UFO['1'];
-        ctx.shadowBlur = 15;
         ctx.beginPath();
         ctx.scale(1, 0.3);
         ctx.arc(0, 0, 16 + Math.sin(gameTime * 0.2) * 2, 0, Math.PI * 2);
@@ -445,8 +525,6 @@ const renderAlien = (ctx: CanvasRenderingContext2D, alien: Alien, gameTime: numb
         ctx.stroke();
         if (alien.ufoState === 'CHARGE') {
             ctx.fillStyle = '#ef4444';
-            ctx.shadowColor = '#ef4444';
-            ctx.shadowBlur = 25;
             ctx.beginPath();
             ctx.arc(0, 0, 9 + Math.random() * 4, 0, Math.PI * 2);
             ctx.fill();
@@ -473,8 +551,7 @@ const renderPowerUps = (ctx: CanvasRenderingContext2D, powerUps: PowerUp[], game
         const scale = 1.05 + Math.sin(gameTime * 0.12 + p.timeOffset) * 0.1;
         ctx.scale(scale, scale);
         
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = p.color;
+        drawGlow(ctx, p.color, 0, 0, 26, 0.65);
         ctx.fillStyle = 'rgba(10, 5, 25, 0.75)'; 
         ctx.beginPath();
         ctx.arc(0, 0, 17, 0, Math.PI * 2);
@@ -503,8 +580,7 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Particle[]) =
         ctx.fillStyle = p.color;
         
         if (p.type === 'FLASH') {
-            ctx.shadowBlur = 25;
-            ctx.shadowColor = '#ffffff';
+            drawGlow(ctx, '#ffffff', p.pos.x, p.pos.y, p.size * p.life * 2, p.life);
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
             ctx.arc(p.pos.x, p.pos.y, p.size * p.life * 1.2, 0, Math.PI * 2);
@@ -514,13 +590,10 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Particle[]) =
             ctx.fillStyle = 'rgba(150, 150, 170, 0.4)';
             ctx.fillRect(p.pos.x - s/2, p.pos.y - s/2, s, s);
         } else if (p.type === 'SPARK') {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = p.color;
+            ctx.globalCompositeOperation = 'lighter';
             ctx.fillRect(p.pos.x, p.pos.y, p.size, p.size);
         } else if (p.type === 'TEXT' && p.text) {
             ctx.font = 'bold 12px monospace';
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = p.color;
             ctx.fillStyle = p.color;
             ctx.textAlign = 'center';
             ctx.fillText(p.text, p.pos.x, p.pos.y);
@@ -533,17 +606,7 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Particle[]) =
 };
 
 const renderOverlays = (ctx: CanvasRenderingContext2D) => {
-    // CRT Scanlines
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
-    for (let i = 0; i < CANVAS_HEIGHT; i += 3) {
-        ctx.fillRect(0, i, CANVAS_WIDTH, 1);
-    }
-    // Deep Space Radial Vignette
-    const rad = ctx.createRadialGradient(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, CANVAS_HEIGHT/3, CANVAS_WIDTH/2, CANVAS_HEIGHT/2, CANVAS_HEIGHT);
-    rad.addColorStop(0, 'rgba(0,0,0,0)');
-    rad.addColorStop(1, 'rgba(3,0,12,0.65)');
-    ctx.fillStyle = rad;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.drawImage(getOverlayCanvas(), 0, 0);
 };
 
 // --- MAIN RENDERER ---

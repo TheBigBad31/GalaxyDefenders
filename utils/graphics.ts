@@ -6,28 +6,95 @@ export const HD_SHIPS: Record<string, HTMLImageElement> = {};
 export const HD_ENEMIES: Record<string, HTMLImageElement> = {};
 export const TRANSPARENT_CACHE: Record<string, HTMLCanvasElement> = {};
 
-// Transparent Background Filter Cache (removes white/light background from imported sprite assets)
-export const getTransparentImageCanvas = (key: string, img: HTMLImageElement): HTMLCanvasElement | null => {
+const LARGE_SPRITE_KEYS = new Set(['BOSS', 'MOTHERSHIP', 'SUPREME_MOTHERSHIP', 'SUPREME_ARTILLERY']);
+
+// Transparent Background Filter Cache (BFS flood-fill from borders with edge anti-aliasing)
+export const getTransparentImageCanvas = (key: string, img: HTMLImageElement, maxSize?: number): HTMLCanvasElement | null => {
     if (TRANSPARENT_CACHE[key]) return TRANSPARENT_CACHE[key];
     if (!img.complete || img.naturalWidth === 0) return null;
 
+    const targetMax = maxSize ?? (LARGE_SPRITE_KEYS.has(key) ? 256 : 128);
+    const scale = Math.min(1, targetMax / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+
     const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    ctx.drawImage(img, 0, 0);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imgData.data;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
 
-    // Filter white & light background pixels (R > 220, G > 220, B > 220) to 100% transparent alpha
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        if (r > 220 && g > 220 && b > 220) {
-            data[i + 3] = 0; // Alpha = 0
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const total = w * h;
+    const bgMask = new Uint8Array(total);
+    const queue = new Int32Array(total);
+    let head = 0;
+    let tail = 0;
+
+    const isLightBg = (idx: number): boolean => {
+        const o = idx * 4;
+        if (data[o + 3] < 20) return true;
+        const r = data[o];
+        const g = data[o + 1];
+        const b = data[o + 2];
+        const minC = Math.min(r, g, b);
+        const maxC = Math.max(r, g, b);
+        return minC > 210 && (maxC - minC) < 35;
+    };
+
+    const enqueue = (idx: number) => {
+        if (bgMask[idx] === 0 && isLightBg(idx)) {
+            bgMask[idx] = 1;
+            queue[tail++] = idx;
+        }
+    };
+
+    // Seed BFS from all 4 borders
+    for (let x = 0; x < w; x++) {
+        enqueue(x);
+        enqueue((h - 1) * w + x);
+    }
+    for (let y = 1; y < h - 1; y++) {
+        enqueue(y * w);
+        enqueue(y * w + (w - 1));
+    }
+
+    while (head < tail) {
+        const idx = queue[head++];
+        const x = idx % w;
+        const y = (idx - x) / w;
+        if (x > 0) enqueue(idx - 1);
+        if (x < w - 1) enqueue(idx + 1);
+        if (y > 0) enqueue(idx - w);
+        if (y < h - 1) enqueue(idx + w);
+    }
+
+    // Clear exterior background and apply 1px edge anti-aliasing
+    for (let i = 0; i < total; i++) {
+        if (bgMask[i] === 1) {
+            data[i * 4 + 3] = 0;
+            continue;
+        }
+        const x = i % w;
+        const y = (i - x) / w;
+        const hasBgNeighbor =
+            (x > 0 && bgMask[i - 1] === 1) ||
+            (x < w - 1 && bgMask[i + 1] === 1) ||
+            (y > 0 && bgMask[i - w] === 1) ||
+            (y < h - 1 && bgMask[i + w] === 1);
+
+        if (hasBgNeighbor) {
+            const o = i * 4;
+            const minC = Math.min(data[o], data[o + 1], data[o + 2]);
+            if (minC > 180) {
+                const factor = Math.max(0, 1 - (minC - 180) / 75);
+                data[o + 3] = Math.round(data[o + 3] * factor);
+            }
         }
     }
 
@@ -59,6 +126,8 @@ const enemyPaths: Record<string, string> = {
     'JELLYFISH': '/assets/enemies/enemy_jellyfish.png',
     'BOSS': '/assets/enemies/enemy_boss.png',
     'MOTHERSHIP': '/assets/enemies/enemy_mothership.png',
+    'SUPREME_MOTHERSHIP': '/assets/enemies/enemy_mothership.png',
+    'SUPREME_ARTILLERY': '/assets/enemies/enemy_artillery.png',
 };
 
 // Preload HD ship & enemy PNG assets
@@ -71,6 +140,9 @@ if (typeof window !== 'undefined') {
 
     Object.entries(enemyPaths).forEach(([enemyType, path]) => {
         const img = new Image();
+        img.onload = () => {
+            getTransparentImageCanvas(enemyType, img);
+        };
         img.src = path;
         HD_ENEMIES[enemyType] = img;
     });
