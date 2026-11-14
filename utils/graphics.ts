@@ -5,29 +5,131 @@ import { SPRITES } from '../constants/sprites';
 export const HD_SHIPS: Record<string, HTMLImageElement> = {};
 export const HD_ENEMIES: Record<string, HTMLImageElement> = {};
 export const TRANSPARENT_CACHE: Record<string, HTMLCanvasElement> = {};
+const GLOW_SPRITE_CACHE: Record<string, HTMLCanvasElement> = {};
 
-// Transparent Background Filter Cache (removes white/light background from imported sprite assets)
-export const getTransparentImageCanvas = (key: string, img: HTMLImageElement): HTMLCanvasElement | null => {
+/** Convert a hex (#rrggbb or #rgb) or rgb() color string to rgba(r, g, b, alpha). */
+export const colorToRgba = (color: string, alpha: number): string => {
+    if (color.startsWith('#')) {
+        let hex = color.slice(1);
+        if (hex.length === 3) {
+            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        const num = parseInt(hex, 16);
+        const r = (num >> 16) & 255;
+        const g = (num >> 8) & 255;
+        const b = num & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    if (color.startsWith('rgb(')) {
+        return color.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+    }
+    return color;
+};
+
+/** Pre-rendered radial glow sprite cached by color to avoid runtime shadowBlur / createRadialGradient. */
+export const getGlowSprite = (color: string): HTMLCanvasElement => {
+    if (GLOW_SPRITE_CACHE[color]) return GLOW_SPRITE_CACHE[color];
+    const size = 64;
+    const half = size / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+        grad.addColorStop(0, colorToRgba(color, 0.9));
+        grad.addColorStop(0.35, colorToRgba(color, 0.45));
+        grad.addColorStop(0.7, colorToRgba(color, 0.12));
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+    }
+    GLOW_SPRITE_CACHE[color] = canvas;
+    return canvas;
+};
+
+const isNearWhite = (r: number, g: number, b: number, threshold = 215): boolean =>
+    r > threshold && g > threshold && b > threshold;
+
+// Transparent Background Filter Cache (BFS flood-fill from edges + alpha feathering, preserves internal white)
+export const getTransparentImageCanvas = (
+    key: string,
+    img: HTMLImageElement,
+    maxDim = 256
+): HTMLCanvasElement | null => {
     if (TRANSPARENT_CACHE[key]) return TRANSPARENT_CACHE[key];
     if (!img.complete || img.naturalWidth === 0) return null;
 
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+
     const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    ctx.drawImage(img, 0, 0);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, w, h);
+    const imgData = ctx.getImageData(0, 0, w, h);
     const data = imgData.data;
+    const total = w * h;
+    const visited = new Uint8Array(total);
+    const queue = new Int32Array(total);
+    let head = 0;
+    let tail = 0;
 
-    // Filter white & light background pixels (R > 220, G > 220, B > 220) to 100% transparent alpha
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        if (r > 220 && g > 220 && b > 220) {
-            data[i + 3] = 0; // Alpha = 0
+    const tryEnqueue = (idx: number) => {
+        if (visited[idx]) return;
+        const p = idx * 4;
+        if (data[p + 3] === 0 || isNearWhite(data[p], data[p + 1], data[p + 2])) {
+            visited[idx] = 1;
+            queue[tail++] = idx;
+        }
+    };
+
+    // Seed BFS from all 4 borders
+    for (let x = 0; x < w; x++) {
+        tryEnqueue(x);
+        tryEnqueue((h - 1) * w + x);
+    }
+    for (let y = 1; y < h - 1; y++) {
+        tryEnqueue(y * w);
+        tryEnqueue(y * w + (w - 1));
+    }
+
+    while (head < tail) {
+        const idx = queue[head++];
+        data[idx * 4 + 3] = 0;
+
+        const x = idx % w;
+        const y = (idx - x) / w;
+        if (x > 0) tryEnqueue(idx - 1);
+        if (x < w - 1) tryEnqueue(idx + 1);
+        if (y > 0) tryEnqueue(idx - w);
+        if (y < h - 1) tryEnqueue(idx + w);
+    }
+
+    // Soften 1px anti-aliased fringe adjacent to flood-filled background
+    for (let i = 0; i < tail; i++) {
+        const idx = queue[i];
+        const x = idx % w;
+        const y = (idx - x) / w;
+        const neighbors = [
+            x > 0 ? idx - 1 : -1,
+            x < w - 1 ? idx + 1 : -1,
+            y > 0 ? idx - w : -1,
+            y < h - 1 ? idx + w : -1,
+        ];
+        for (let n = 0; n < 4; n++) {
+            const nIdx = neighbors[n];
+            if (nIdx >= 0 && !visited[nIdx]) {
+                const p = nIdx * 4;
+                const lum = (data[p] + data[p + 1] + data[p + 2]) / 3;
+                if (lum > 180) {
+                    data[p + 3] = Math.round(data[p + 3] * Math.max(0, (235 - lum) / 55));
+                }
+            }
         }
     }
 
@@ -59,18 +161,25 @@ const enemyPaths: Record<string, string> = {
     'JELLYFISH': '/assets/enemies/enemy_jellyfish.png',
     'BOSS': '/assets/enemies/enemy_boss.png',
     'MOTHERSHIP': '/assets/enemies/enemy_mothership.png',
+    'SUPREME_ARTILLERY': '/assets/enemies/enemy_artillery.png',
+    'SUPREME_MOTHERSHIP': '/assets/enemies/enemy_mothership.png',
 };
 
-// Preload HD ship & enemy PNG assets
+const LARGE_SPRITE_KEYS = new Set(['BOSS', 'MOTHERSHIP', 'SUPREME_ARTILLERY', 'SUPREME_MOTHERSHIP']);
+
+// Preload HD ship & enemy PNG assets and pre-process transparency on load
 if (typeof window !== 'undefined') {
     Object.entries(shipPaths).forEach(([shipId, path]) => {
         const img = new Image();
+        img.onload = () => getTransparentImageCanvas(`SHIP_${shipId}`, img, 256);
         img.src = path;
         HD_SHIPS[shipId] = img;
     });
 
     Object.entries(enemyPaths).forEach(([enemyType, path]) => {
         const img = new Image();
+        const maxDim = LARGE_SPRITE_KEYS.has(enemyType) ? 512 : 256;
+        img.onload = () => getTransparentImageCanvas(enemyType, img, maxDim);
         img.src = path;
         HD_ENEMIES[enemyType] = img;
     });
