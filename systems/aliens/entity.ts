@@ -80,17 +80,3 @@ export abstract class AlienEntity implements Alien {
     // Méthode polymorphique principale
     abstract update(ctx: AlienUpdateContext): void;
 }
-
-// Classe adaptateur pour supporter les anciennes fonctions de mise à jour (Migration progressive)
-export class LegacyAdapterAlien extends AlienEntity {
-    private updateFn: (alien: Alien, ctx: AlienUpdateContext) => void;
-
-    constructor(props: Alien, updateFn: (alien: Alien, ctx: AlienUpdateContext) => void) {
-        super(props);
-        this.updateFn = updateFn;
-    }
-
-    update(ctx: AlienUpdateContext): void {
-        this.updateFn(this, ctx);
-    }
-}

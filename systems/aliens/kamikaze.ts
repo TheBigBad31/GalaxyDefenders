@@ -1,8 +1,11 @@
+import { AlienEntity } from './entity';
 
 import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
 
-export const updateKamikaze = (alien: Alien, ctx: AlienUpdateContext) => {
+export class KamikazeAlien extends AlienEntity {
+    update(ctx: AlienUpdateContext): void {
+        const alien: Alien = this;
     const { player, gameTime, aliens } = ctx;
     const centerX = alien.pos.x + alien.width/2;
     const centerY = alien.pos.y + alien.height/2;
@@ -48,4 +51,5 @@ export const updateKamikaze = (alien: Alien, ctx: AlienUpdateContext) => {
            alien.pos.y += alien.lockedVector.y * 8.0;
        }
     }
-};
+    }
+}

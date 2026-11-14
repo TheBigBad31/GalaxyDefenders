@@ -1,3 +1,4 @@
+import { nextEntityId } from '../../utils/id';
 
 import { AlienUpdateContext } from './types';
 import { Alien } from '../../types';
@@ -51,7 +52,7 @@ export class SniperAlien extends AlienEntity {
                 const vy = Math.sin(this.aimAngle || 0) * speed;
 
                 bullets.push({
-                    id: Math.random().toString(),
+                    id: nextEntityId(),
                     pos: { x: centerX - 2, y: centerY },
                     width: 4, height: 16,
                     color: COLORS.enemyBulletSniper,

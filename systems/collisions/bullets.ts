@@ -9,17 +9,22 @@ const handleEnemyBullet = (bullet: any, ctx: CollisionContext) => {
 
     // 1. Destructible Bullets vs Player Bullets (Bullet Interception)
     if (bullet.variant === 'ENEMY_DESTRUCTIBLE') {
-        bullets.forEach(pb => {
-            if (!pb.active || pb.isEnemy) return;
-            const dist = Math.hypot((bullet.pos.x + bullet.width/2) - (pb.pos.x + pb.width/2), (bullet.pos.y + bullet.height/2) - (pb.pos.y + pb.height/2));
-            if (dist < 20) {
+        const bx = bullet.pos.x + bullet.width / 2;
+        const by = bullet.pos.y + bullet.height / 2;
+        for (let i = 0; i < bullets.length; i++) {
+            const pb = bullets[i];
+            if (!pb.active || pb.isEnemy) continue;
+            const dx = bx - (pb.pos.x + pb.width / 2);
+            const dy = by - (pb.pos.y + pb.height / 2);
+            if (dx * dx + dy * dy < 400) {
                 bullet.active = false;
-                pb.active = false; 
-                createExplosion(bullet.pos.x + bullet.width/2, bullet.pos.y + bullet.height/2, '#fbbf24', 'SMALL');
+                pb.active = false;
+                createExplosion(bx, by, '#fbbf24', 'SMALL');
                 playSound('EXPLOSION');
+                break;
             }
-        });
-        if (!bullet.active) return; 
+        }
+        if (!bullet.active) return;
     }
 
     // 2. Active Shield Deflection (Genji Deflect style)
